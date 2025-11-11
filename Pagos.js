@@ -111,7 +111,7 @@ function paso1_registrarRegistro(datos) {
             if (respHermano.status === 'OK_REGISTRO') {
               
               // =========================================================
-              // --- ¡¡AQUÍ ESTÁ LA CORRECCIÓN (Error 2)!! ---
+              // --- ¡¡AQUÍ ESTÁ LA CORRECCIÓN (Error 2b)!! ---
               // (Se pasa el tipo real para la redirección)
               // =========================================================
               hermanosRegistrados.push({

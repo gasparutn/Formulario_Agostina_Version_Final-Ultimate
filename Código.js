@@ -780,11 +780,10 @@ function configurarColumnaEnviarEmailComoCheckboxDeshabilitada() {
 // --- ¡¡INICIO DE LA CORRECCIÓN (Error 2)!! ---
 // Esta es la función reemplazada por la de la "versión antigua"
 // =========================================================
-/**
- * (MODIFICADO - v11 - CORRECCIÓN ERROR 'nombreCompleto')
- * - Movido el bloque 'HERMANO_COMPLETAR' al inicio de la función (para Error 2).
- * - Añadida la definición de 'nombreCompleto' al inicio (para Error 'not defined').
- */
+//=========================================================
+// --- ¡¡FIN DE LA CORRECCIÓN (Error 2)!! ---
+// =========================================================
+
 function gestionarUsuarioYaRegistrado(
   ss,
   hojaRegistro,
@@ -801,33 +800,51 @@ function gestionarUsuarioYaRegistrado(
   let estadoPago = rangoFila[COL_ESTADO_PAGO - 1];
   const metodoPago = rangoFila[COL_METODO_PAGO - 1];
   
-  // =========================================================
-  // --- ¡¡INICIO DE LA CORRECCIÓN ('nombreCompleto not defined')!! ---
-  // (Esta variable debe definirse aquí arriba)
-  // =========================================================
   const nombreRegistrado = rangoFila[COL_NOMBRE - 1];
   const apellidoRegistrado = rangoFila[COL_APELLIDO - 1];
   const nombreCompleto = `${nombreRegistrado} ${apellidoRegistrado}`;
-  // =========================================================
-  // --- ¡¡FIN DE LA CORRECCIÓN!! ---
-  // =========================================================
 
   const estadoInscripto = rangoFila[COL_ESTADO_NUEVO_ANT - 1];
   const estadoInscriptoTrim = estadoInscripto
-    ? String(estadoInscripto).trim()
+    ? String(estadoInscripto).trim().toLowerCase()
     : "";
 
-  // =========================================================
-  // --- ¡¡INICIO DE LA CORRECCIÓN (Error 2: Loading infinito)!! ---
-  // (Se comprueba si es un hermano INCOMPLETO primero, que es rápido)
-  // =========================================================
-  if (estadoInscriptoTrim.includes("hermano/a") && !metodoPago) {
-    
-    // Validar el tipo de inscripción (nuevo, anterior, preventa)
-    let tipoOriginal = "nuevo"; // Default
-    if (estadoInscriptoTrim.includes("Anterior")) tipoOriginal = "anterior";
-    if (estadoInscriptoTrim.includes("Pre-Venta")) tipoOriginal = "preventa";
+  // --- (Validación de Tipo) ---
+  if (estadoInscriptoTrim.includes('anterior') && tipoInscripto !== 'anterior') {
+    return { status: 'ERROR', message: 'Este DNI ya está registrado como "Inscripto Anterior". Por favor, seleccione esa opción y valide de nuevo.' };
+  }
+  if (estadoInscriptoTrim.includes('nuevo') && tipoInscripto !== 'nuevo') {
+    return { status: 'ERROR', message: 'Este DNI ya está registrado como "Nuevo Inscripto". Por favor, seleccione esa opción y valide de nuevo.' };
+  }
+  if (estadoInscriptoTrim.includes('pre-venta') && tipoInscripto !== 'preventa') {
+    return { status: 'ERROR', message: 'Este DNI está registrado como "Pre-Venta". Por favor, seleccione esa opción y valide de nuevo.' };
+  }
 
+
+  // (Preparar datos para la función de Editar)
+  const datosParaEdicion = {
+    dni: dniLimpio,
+    nombre: nombreRegistrado, // Nombre solo
+    apellido: apellidoRegistrado, // Apellido solo
+    email: rangoFila[COL_EMAIL - 1] || '',
+    adultoResponsable1: rangoFila[COL_ADULTO_RESPONSABLE_1 - 1] || '',
+    dniResponsable1: rangoFila[COL_DNI_RESPONSABLE_1 - 1] || '',
+    telResponsable1: rangoFila[COL_TEL_RESPONSABLE_1 - 1] || '',
+    adultoResponsable2: rangoFila[COL_ADULTO_RESPONSABLE_2 - 1] || '',
+    telResponsable2: rangoFila[COL_TEL_RESPONSABLE_2 - 1] || '',
+    personasAutorizadas: rangoFila[COL_PERSONAS_AUTORIZADAS - 1] || '',
+    urlCertificadoAptitud: rangoFila[COL_APTITUD_FISICA - 1] || ''
+  };
+
+
+  // --- (INICIO CORRECCIÓN Error 2: Loading infinito / Falla al completar) ---
+  if (estadoInscriptoTrim.includes('hermano/a') && !metodoPago) { 
+    
+    let tipoOriginal = "nuevo"; // Default
+    if (estadoInscriptoTrim.includes("anterior")) tipoOriginal = "anterior";
+    if (estadoInscriptoTrim.includes("pre-venta")) tipoOriginal = "preventa";
+
+    // (Validación de tipo específica para hermanos incompletos)
     if (tipoInscripto !== tipoOriginal) {
        let tipoCorrecto = "Soy Nuevo Inscripto"; // Default
        if (tipoOriginal === "anterior") {
@@ -842,75 +859,40 @@ function gestionarUsuarioYaRegistrado(
     }
     
     // Si el tipo es correcto, proceder a completar datos
-    const datosCompletos = {
-      dni: dniLimpio,
-      nombre: nombreRegistrado,
-      apellido: apellidoRegistrado,
-      email: rangoFila[COL_EMAIL - 1] || "",
-      adultoResponsable1: rangoFila[COL_ADULTO_RESPONSABLE_1 - 1] || "",
-      dniResponsable1: rangoFila[COL_DNI_RESPONSABLE_1 - 1] || "",
-      telResponsable1: rangoFila[COL_TEL_RESPONSABLE_1 - 1] || "",
-      adultoResponsable2: rangoFila[COL_ADULTO_RESPONSABLE_2 - 1] || "",
-      telResponsable2: rangoFila[COL_TEL_RESPONSABLE_2 - 1] || "",
-      personasAutorizadas: rangoFila[COL_PERSONAS_AUTORIZADAS - 1] || "",
-      urlCertificadoAptitud: rangoFila[COL_APTITUD_FISICA - 1] || "",
-      fechaNacimiento: rangoFila[COL_FECHA_NACIMIENTO_REGISTRO - 1]
-        ? Utilities.formatDate(
-            new Date(rangoFila[COL_FECHA_NACIMIENTO_REGISTRO - 1]),
-            ss.getSpreadsheetTimeZone(),
-            "yyyy-MM-dd"
-          )
-        : "",
-      obraSocial: rangoFila[COL_OBRA_SOCIAL - 1] || "",
-      colegioJardin: rangoFila[COL_COLEGIO_JARDIN - 1] || "",
-      tipoInscripto: tipoOriginal, // Usar el tipo original (nuevo, anterior, preventa)
-      esHermanoCompletando: true,
-      esPreventa: tipoOriginal === "preventa" // Pasar el 'esPreventa' real
+     const datosCompletos = {
+      ...datosParaEdicion,
+      fechaNacimiento: rangoFila[COL_FECHA_NACIMIENTO_REGISTRO - 1] ? Utilities.formatDate(new Date(rangoFila[COL_FECHA_NACIMIENTO_REGISTRO - 1]), ss.getSpreadsheetTimeZone(), 'yyyy-MM-dd') : '',
+      obraSocial: rangoFila[COL_OBRA_SOCIAL - 1] || '',
+      colegioJardin: rangoFila[COL_COLEGIO_JARDIN - 1] || '',
+      esHermanoCompletando: true, // Flag para el cliente
+      esPreventa: estadoInscriptoTrim.includes('pre-venta') // Pasar si es preventa
     };
-    
+
     return {
-      status: "HERMANO_COMPLETAR",
-      message: `⚠️ ¡Hola ${datosCompletos.nombre}! Eres un hermano/a pre-registrado. Por favor, complete/verifique TODOS los campos para finalizar la inscripción.`,
+      status: 'HERMANO_COMPLETAR',
+      message: `⚠️ ¡Hola ${datosCompletos.nombre}! Eres un hermano/a pre-registrado.\n` +
+      `Por favor, complete/verifique TODOS los campos del formulario para obtener el cupo definitivo.`,
       datos: datosCompletos,
       jornadaExtendidaAlcanzada: estado.jornadaExtendidaAlcanzada,
-      tipoInscripto: tipoOriginal, // Devolver el tipo original
-      pagoTotalMPVisible: pagoTotalMPVisible,
+      tipoInscripto: tipoInscripto, 
+      pagoTotalMPVisible: pagoTotalMPVisible
     };
   }
-  // =========================================================
-  // --- ¡¡FIN DE LA CORRECCIÓN (Error 2)!! ---
-  // =========================================================
+  // --- (FIN CORRECCIÓN Error 2) ---
 
-
-  // --- (Validación de Tipo para NO hermanos) ---
-  if (
-    (estadoInscriptoTrim.includes("anterior") && tipoInscripto !== "anterior") ||
-    (estadoInscriptoTrim.includes("nuevo") && tipoInscripto !== "nuevo")
-  ) {
-    let tipoCorrecto = "Soy Nuevo Inscripto"; // Default
-    if (estadoInscriptoTrim.includes("anterior")) {
-      tipoCorrecto = "Soy Inscripto Anterior";
-    } else if (estadoInscriptoTrim.includes("pre-venta")) {
-      tipoCorrecto = "Soy Inscripto PRE-VENTA";
-    }
-
-    return {
-      status: "ERROR",
-      message: `Este DNI ya está registrado en la categoría "${estadoInscripto}". Por favor, seleccione la opción "<strong>${tipoCorrecto}</strong>" y valide de nuevo.`,
-    };
-  }
-  if (estadoInscriptoTrim.includes("Pre-Venta") && tipoInscripto !== "preventa") {
-      return {
-      status: "ERROR",
-      message: `Este DNI ya está registrado en la categoría "${estadoInscripto}".
-Por favor, seleccione la opción "<strong>Soy Inscripto PRE-VENTA</strong>" y valide de nuevo.`,
-    };
-  }
 
   // --- (Inicio de Lógica de Pagos para usuarios COMPLETOS) ---
 
   const idFamiliar = rangoFila[COL_VINCULO_PRINCIPAL - 1];
+  
+  // =========================================================
+  // --- ¡¡INICIO DE LA CORRECCIÓN ('tieneHermanos not defined')!! ---
+  // (Se declara 'tieneHermanos' aquí)
+  // =========================================================
   let tieneHermanos = false;
+  // =========================================================
+  // --- ¡¡FIN DE LA CORRECCIÓN!! ---
+  // =========================================================
   
   // (Optimización: Solo buscar hermanos si hay un ID familiar)
   if (idFamiliar) {
@@ -923,20 +905,6 @@ Por favor, seleccione la opción "<strong>Soy Inscripto PRE-VENTA</strong>" y va
        tieneHermanos = true;
     }
   }
-
-  const datosParaEdicion = {
-    dni: dniLimpio,
-    nombre: nombreRegistrado,
-    apellido: apellidoRegistrado,
-    email: rangoFila[COL_EMAIL - 1] || "",
-    adultoResponsable1: rangoFila[COL_ADULTO_RESPONSABLE_1 - 1] || "",
-    dniResponsable1: rangoFila[COL_DNI_RESPONSABLE_1 - 1] || "",
-    telResponsable1: rangoFila[COL_TEL_RESPONSABLE_1 - 1] || "",
-    adultoResponsable2: rangoFila[COL_ADULTO_RESPONSABLE_2 - 1] || "",
-    telResponsable2: rangoFila[COL_TEL_RESPONSABLE_2 - 1] || "",
-    personasAutorizadas: rangoFila[COL_PERSONAS_AUTORIZADAS - 1] || "",
-    urlCertificadoAptitud: rangoFila[COL_APTITUD_FISICA - 1] || "",
-  };
 
   let cantidadCuotasRegistrada = parseInt(rangoFila[COL_CANTIDAD_CUOTAS - 1]); // AH
   if (
@@ -1134,8 +1102,8 @@ Por favor, seleccione la opción "<strong>Soy Inscripto PRE-VENTA</strong>" y va
     cantidadCuotasRegistrada - pagadasCountByComp
   );
 
-  let algunoHermanoCompletos = false; // Mover la declaración aquí
-  if (tieneHermanos && idFamiliar) { // Re-usar la variable 'tieneHermanos'
+  let algunoHermanoCompletos = false; 
+  if (tieneHermanos && idFamiliar) {
     try {
       const finder = hojaRegistro
         .getRange(2, COL_VINCULO_PRINCIPAL, hojaRegistro.getLastRow() - 1, 1)
@@ -1178,7 +1146,7 @@ Por favor, seleccione la opción "<strong>Soy Inscripto PRE-VENTA</strong>" y va
       }
     } catch (e) {
       Logger.log("Error calculando hermanos comprobantes completos: " + e.toString());
-      algunoHermanoCompletos = false; // Asegurarse que esté definida
+      algunoHermanoCompletos = false;
     }
   }
 
@@ -1203,7 +1171,9 @@ Por favor, seleccione la opción "<strong>Soy Inscripto PRE-VENTA</strong>" y va
   if (
     String(estadoPago).startsWith("Pago total") ||
     String(estadoPago).startsWith("Pagado Total") ||
-    String(estadoPago).startsWith("Pagado")
+    String(estadoPago).startsWith("Pagado") ||
+    String(estadoPago).startsWith("Pago Total Familiar")
+
   ) {
     return {
       ...baseResponse,
@@ -1254,6 +1224,7 @@ Por favor, seleccione la opción "<strong>Soy Inscripto PRE-VENTA</strong>" y va
     estadoPago: estadoPago,
   };
 }
+
 
 /**
  * (MODIFICADO)
@@ -1485,3 +1456,58 @@ function validarDNIHermano(dniHermano, dniPrincipal) {
     return { status: 'ERROR', message: 'Error del servidor: ' + e.message };
   }
 }
+
+// =========================================================
+// --- ¡¡INICIO DE LA CORRECCIÓN (uploadFileToDrive)!! ---
+// (Esta función se movió aquí desde Comprobantes.js)
+// =========================================================
+/**
+ * (MODIFICADO)
+ * Sube un archivo a Drive con un nombre de archivo específico.
+ * Devuelve un =HYPERLINK() para la hoja de cálculo.
+ */
+function uploadFileToDrive(data, mimeType, newFilename, dni, tipoArchivo) {
+  try {
+    if (!dni) return { status: "ERROR", message: "No se recibió DNI." };
+    let parentFolderId;
+    switch (tipoArchivo) {
+      case "foto":
+        parentFolderId = FOLDER_ID_FOTOS;
+        break;
+      case "ficha":
+        parentFolderId = FOLDER_ID_FICHAS;
+        break;
+      case "comprobante":
+        parentFolderId = FOLDER_ID_COMPROBANTES;
+        break;
+      default:
+        return { status: "ERROR", message: "Tipo de archivo no reconocido." };
+    }
+    if (!parentFolderId || parentFolderId.includes("AQUI_VA_EL_ID")) {
+      return { status: "ERROR", message: "IDs de carpetas no configurados." };
+    }
+
+    const parentFolder = DriveApp.getFolderById(parentFolderId);
+    let subFolder;
+    const folders = parentFolder.getFoldersByName(dni);
+    subFolder = folders.hasNext()
+      ? folders.next()
+      : parentFolder.createFolder(dni);
+
+    const decodedData = Utilities.base64Decode(data.split(",")[1]);
+    const blob = Utilities.newBlob(decodedData, mimeType, newFilename);
+    const file = subFolder.createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+    // --- (MODIFICACIÓN) ---
+    // Devolver la URL con el nombre de archivo como hipervínculo para la hoja
+    return `=HYPERLINK("${file.getUrl()}"; "${newFilename}")`;
+    // --- (FIN MODIFICACIÓN) ---
+  } catch (e) {
+    Logger.log("Error en uploadFileToDrive: " + e.toString());
+    return { status: "ERROR", message: "Error al subir archivo: " + e.message };
+  }
+}
+// =========================================================
+// --- ¡¡FIN DE LA CORRECCIÓN (uploadFileToDrive)!! ---
+// =========================================================

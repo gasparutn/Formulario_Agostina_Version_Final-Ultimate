@@ -1,14 +1,9 @@
-// Archivo: Comprobantes.js
-// Contiene la lógica de subida y procesamiento de comprobantes
-// Migrado desde Código.js para mayor modularidad.
-
 /**
- * (MODIFICADO - v9 - CORRECCIÓN BUGS 1, 2, 0>=0 y Formato AN/AO)
- * - Lógica de estado (AI) y prefijo (AN/AO) REFACTORIZADA.
- * - BUG 1 (Prefijo): Prefijos (C1, C2) ELIMINADOS de AN/AO.
- * - BUG 2 (Hermanos): El estado de pago AHORA se recalcula por fila, en lugar de copiarse desde el principal.
- * - BUG 0>=0: La lógica de 'esTotal' ahora comprueba que 'cantidadCuotas' sea > 0.
- * - FORMATO AN/AO: Columna AN guarda "Nombre Apellido", Columna AO guarda "DNI".
+ * (MODIFICADO - v12 - CORRECCIÓN PAGO FAMILIAR TOTAL A CUOTAS)
+ * - Lógica de 'aplicarCambiosHermano' modificada.
+ * - Si el pago principal es "Total" (externo) y el hermano paga "en Cuotas",
+ * el comprobante se aplica a la PRIMERA CUOTA DISPONIBLE del hermano (AR, AS, o AT).
+ * - Se actualiza el estado (AE, AF, AG) y el estado principal (AI) del hermano correctamente.
  */
 function subirComprobanteManual(
   dni,
@@ -154,7 +149,7 @@ function subirComprobanteManual(
           pagadasCount >= cantidadCuotasRegistrada;
         if (
           metodoPago !== "Pago en Cuotas" &&
-          ["mp_total", "externo"].includes(cuotasSeleccionadas[0])
+          (cuotasPagadasAhora.has("mp_total") || cuotasPagadasAhora.has("externo"))
         ) {
           esTotal = true; // Pago total para Transferencia/Efectivo
         }
@@ -309,7 +304,8 @@ function subirComprobanteManual(
         if (fileUrl) {
           if (
             metodoPago === "Transferencia" ||
-            metodoPago === "Pago Efectivo (Adm del Club)"
+            metodoPago === "Pago Efectivo (Adm del Club)" ||
+            (cuotasPagadasAhora.has("externo") || cuotasPagadasAhora.has("mp_total"))
           ) {
             hoja
               .getRange(filaAfectada, COL_COMPROBANTE_MANUAL_TOTAL_EXT)
@@ -449,25 +445,40 @@ function subirComprobanteManual(
             .findAll();
           let nombresActualizados = [];
 
-          // Helper específico para hermanos: solo marca la(s) cuota(s) seleccionada(s)
-          // y recalcula el estado de pago a partir de AE/AF/AG y COL_CANTIDAD_CUOTAS.
+          // =========================================================
+          // --- ¡¡INICIO DE LA CORRECCIÓN (Error 1)!! ---
+          // (Helper modificado para pago total -> cuota 1)
+          // =========================================================
           const aplicarCambiosHermano = (filaHermano, fileUrlHermano) => {
-            Logger.log(
-              `aplicarCambiosHermano INICIO. fila:${filaHermano} fileUrl:${
-                fileUrlHermano ? "SI" : "NO"
-              } cuotasActuales:${Array.from(cuotasPagadasAhora).join(
-                "|"
-              )} esPagoFamiliar:${esPagoFamiliar} pagador:${nombrePagador}/${dniPagador}`
-            );
-            // Leer la fila actual
             let filaDatos = hoja
               .getRange(filaHermano, 1, 1, hoja.getLastColumn())
               .getValues()[0];
-            const metodoPagoHermano = filaDatos[COL_METODO_PAGO - 1]; // Leer el método de pago del hermano
+            const metodoPagoHermano = filaDatos[COL_METODO_PAGO - 1];
             const cantidadCuotasHermano =
               parseInt(filaDatos[COL_CANTIDAD_CUOTAS - 1]) || 0;
+            
+            // Copia local del Set de cuotas del principal
+            let cuotasPagadasAhoraLocal = new Set(cuotasPagadasAhora); 
+            const esPagoTotalPrincipal = cuotasPagadasAhora.has("externo") || cuotasPagadasAhora.has("mp_total");
 
-            // 1) Append pagador manual (AN/AO) si corresponde
+            if (esPagoTotalPrincipal && metodoPagoHermano === "Pago en Cuotas") {
+                // El principal hizo un pago total. Esto debe contar como C1 (o la prox) para el hermano.
+                const comp1h = filaDatos[COL_COMPROBANTE_MANUAL_CUOTA1 - 1];
+                const comp2h = filaDatos[COL_COMPROBANTE_MANUAL_CUOTA2 - 1];
+                const comp3h = filaDatos[COL_COMPROBANTE_MANUAL_CUOTA3 - 1];
+
+                // Busca el primer slot de cuota vacío
+                if (!comp1h || String(comp1h).trim() === "") {
+                    cuotasPagadasAhoraLocal.add("mp_cuota_1");
+                } else if (!comp2h || String(comp2h).trim() === "") {
+                    cuotasPagadasAhoraLocal.add("mp_cuota_2");
+                } else if (!comp3h || String(comp3h).trim() === "") {
+                    cuotasPagadasAhoraLocal.add("mp_cuota_3");
+                }
+                // Si todos están llenos, no se añade nada extra, pero el comprobante irá al "Total" (AQ)
+            }
+            
+            // 1) Append pagador manual (AN/AO)
             if (fileUrlHermano) {
               const celdaNombreH = hoja.getRange(
                 filaHermano,
@@ -489,144 +500,80 @@ function subirComprobanteManual(
               celdaDNIH.setValue(nuevoDni);
             }
 
-            // 2) Marcar las cuotas pagadas AHORA (solo modificar AE/AF/AG)
-            // (CORRECCIÓN) Solo ejecutar si el método de pago del hermano es "Pago en Cuotas"
+            // 2) Marcar las cuotas pagadas AHORA (usando el Set local)
             if (metodoPagoHermano === "Pago en Cuotas") {
-              if (cuotasPagadasAhora.has("mp_cuota_1"))
+              if (cuotasPagadasAhoraLocal.has("mp_cuota_1"))
                 hoja
                   .getRange(filaHermano, COL_CUOTA_1)
                   .setValue("Pagada (En revisión)");
-              if (cuotasPagadasAhora.has("mp_cuota_2"))
+              if (cuotasPagadasAhoraLocal.has("mp_cuota_2"))
                 hoja
                   .getRange(filaHermano, COL_CUOTA_2)
                   .setValue("Pagada (En revisión)");
-              if (cuotasPagadasAhora.has("mp_cuota_3"))
+              if (cuotasPagadasAhoraLocal.has("mp_cuota_3"))
                 hoja
                   .getRange(filaHermano, COL_CUOTA_3)
                   .setValue("Pagada (En revisión)");
             }
-
-            // 3) Setear comprobantes (AQ/AR/AS/AT) según la cuota pagada y fileUrl
+            
+            // 3) Setear comprobantes (usando el Set local)
             if (fileUrlHermano) {
-              // Para cada cuota seleccionada intentar escribir en la misma cuota del hermano;
-              // si ya existe un comprobante en esa cuota, buscar la primera cuota disponible
-              const selected = Array.from(cuotasPagadasAhora)
-                .map((s) => parseInt(s.split("_").pop()))
-                .filter((n) => !isNaN(n));
-              const maxCuotas = cantidadCuotasHermano || 3;
-              selected.forEach((idx) => {
-                // índice objetivo inicial (1..3)
-                let target = idx;
-                const getCompAt = (i) => {
-                  if (i === 1)
-                    return hoja
-                      .getRange(filaHermano, COL_COMPROBANTE_MANUAL_CUOTA1)
-                      .getValue();
-                  if (i === 2)
-                    return hoja
-                      .getRange(filaHermano, COL_COMPROBANTE_MANUAL_CUOTA2)
-                      .getValue();
-                  if (i === 3)
-                    return hoja
-                      .getRange(filaHermano, COL_COMPROBANTE_MANUAL_CUOTA3)
-                      .getValue();
-                  return null;
-                };
-                const setCompAt = (i, val) => {
-                  if (i === 1)
-                    hoja
-                      .getRange(filaHermano, COL_COMPROBANTE_MANUAL_CUOTA1)
-                      .setValue(val);
-                  if (i === 2)
-                    hoja
-                      .getRange(filaHermano, COL_COMPROBANTE_MANUAL_CUOTA2)
-                      .setValue(val);
-                  if (i === 3)
-                    hoja
-                      .getRange(filaHermano, COL_COMPROBANTE_MANUAL_CUOTA3)
-                      .setValue(val);
-                };
-
-                // If target slot already has a comprobante, find first empty slot within cantidadCuotasHermano
-                if (
-                  getCompAt(target) &&
-                  String(getCompAt(target)).toString().trim() !== ""
-                ) {
-                  let found = false;
-                  for (let j = 1; j <= maxCuotas; j++) {
-                    if (
-                      !getCompAt(j) ||
-                      String(getCompAt(j)).toString().trim() === ""
-                    ) {
-                      target = j;
-                      found = true;
-                      break;
-                    }
-                  }
-                  if (!found) {
-                    // no empty slot -> skip to avoid overwriting
-                    return;
-                  }
+                if ((esPagoTotalPrincipal || cuotasPagadasAhoraLocal.has("externo") || cuotasPagadasAhoraLocal.has("mp_total")) && metodoPagoHermano !== "Pago en Cuotas") {
+                    // Es un pago total (Efectivo/Transf) y el hermano también es de pago total
+                    hoja.getRange(filaHermano, COL_COMPROBANTE_MANUAL_TOTAL_EXT).setValue(fileUrlHermano); // AQ
+                } else {
+                    // Es pago en cuotas (o fue forzado a serlo)
+                    cuotasPagadasAhoraLocal.forEach((cuota) => {
+                      if (cuota === "mp_cuota_1")
+                        hoja.getRange(filaHermano, COL_COMPROBANTE_MANUAL_CUOTA1).setValue(fileUrlHermano); // AR
+                      if (cuota === "mp_cuota_2")
+                        hoja.getRange(filaHermano, COL_COMPROBANTE_MANUAL_CUOTA2).setValue(fileUrlHermano); // AS
+                      if (cuota === "mp_cuota_3")
+                        hoja.getRange(filaHermano, COL_COMPROBANTE_MANUAL_CUOTA3).setValue(fileUrlHermano); // AT
+                      
+                      // Fallback para el pago total del principal si el hermano es de cuotas pero no se encontró slot
+                      if ((cuota === "externo" || cuota === "mp_total") && metodoPagoHermano === "Pago en Cuotas") {
+                         hoja.getRange(filaHermano, COL_COMPROBANTE_MANUAL_CUOTA1).setValue(fileUrlHermano); // Pone en C1 por defecto
+                      }
+                    });
                 }
-                // Set comprobante into target slot
-                setCompAt(target, fileUrlHermano);
-              });
             }
+            // =========================================================
+            // --- ¡¡FIN DE LA CORRECCIÓN (Error 1)!! ---
+            // =========================================================
 
-            // 4) Releer la fila AHORA que las escrituras han ocurrido y recalcular el estado
-            // Esto evita usar valores antiguos (filaDatos) y prevenir marcar cuotas como pagadas
-            // por lecturas previas inconsistentes.
+            // 4) Releer la fila y recalcular el estado (usando el Set local)
             let filaActualizada = hoja
               .getRange(filaHermano, 1, 1, hoja.getLastColumn())
               .getValues()[0];
-            const prevC1 = String(filaActualizada[COL_CUOTA_1 - 1])
-              .toString()
-              .trim();
-            const prevC2 = String(filaActualizada[COL_CUOTA_2 - 1])
-              .toString()
-              .trim();
-            const prevC3 = String(filaActualizada[COL_CUOTA_3 - 1])
-              .toString()
-              .trim();
-
-            Logger.log(
-              `filaHermano=${filaHermano} prevC1:'${prevC1}' prevC2:'${prevC2}' prevC3:'${prevC3}' comp1:'${
-                filaActualizada[COL_COMPROBANTE_MANUAL_CUOTA1 - 1]
-              }' comp2:'${
-                filaActualizada[COL_COMPROBANTE_MANUAL_CUOTA2 - 1]
-              }' comp3:'${filaActualizada[COL_COMPROBANTE_MANUAL_CUOTA3 - 1]}'`
-            );
-
-            const comp1h = filaActualizada[COL_COMPROBANTE_MANUAL_CUOTA1 - 1];
-            const comp2h = filaActualizada[COL_COMPROBANTE_MANUAL_CUOTA2 - 1];
-            const comp3h = filaActualizada[COL_COMPROBANTE_MANUAL_CUOTA3 - 1];
             const estadoAIHermano = String(
               filaActualizada[COL_ESTADO_PAGO - 1] || ""
             );
-            // Solo considerar una cuota como pagada previamente si existe un comprobante asociado.
+            
+            const comp1h = filaActualizada[COL_COMPROBANTE_MANUAL_CUOTA1 - 1];
+            const comp2h = filaActualizada[COL_COMPROBANTE_MANUAL_CUOTA2 - 1];
+            const comp3h = filaActualizada[COL_COMPROBANTE_MANUAL_CUOTA3 - 1];
+            const compTotalh = filaActualizada[COL_COMPROBANTE_MANUAL_TOTAL_EXT - 1];
+
             const prevPagada1 =
               comp1h && String(comp1h).toString().trim() !== "";
             const prevPagada2 =
               comp2h && String(comp2h).toString().trim() !== "";
             const prevPagada3 =
               comp3h && String(comp3h).toString().trim() !== "";
+            
+            // ¡IMPORTANTE! 'ahoraPagada' se basa en el Set Local
+            const ahoraPagada1 = prevPagada1; // El comprobante ya se escribió
+            const ahoraPagada2 = prevPagada2;
+            const ahoraPagada3 = prevPagada3;
 
-            const ahoraPagada1 =
-              prevPagada1 || cuotasPagadasAhora.has("mp_cuota_1");
-            const ahoraPagada2 =
-              prevPagada2 || cuotasPagadasAhora.has("mp_cuota_2");
-            const ahoraPagada3 =
-              prevPagada3 || cuotasPagadasAhora.has("mp_cuota_3");
-
-            // Construir textos de estado; si es pago familiar, usar la etiqueta 'Familiar Pagada' solo para cuotas
-            // que se pagaron ahora como familiar o que ya tenían la marca familiar previamente.
             let estados = [];
             let pagadasCountHermano = 0;
 
             // Cuota 1
             if (ahoraPagada1) {
               pagadasCountHermano++;
-              if (cuotasPagadasAhora.has("mp_cuota_1") && esPagoFamiliar)
+              if ((cuotasPagadasAhoraLocal.has("mp_cuota_1") || esPagoTotalPrincipal) && esPagoFamiliar)
                 estados.push("C1 Familiar Pagada");
               else if (prevPagada1 && estadoAIHermano.includes("C1 Familiar"))
                 estados.push("C1 Familiar Pagada");
@@ -634,11 +581,10 @@ function subirComprobanteManual(
             } else {
               estados.push("C1 Pendiente");
             }
-
             // Cuota 2
             if (ahoraPagada2) {
               pagadasCountHermano++;
-              if (cuotasPagadasAhora.has("mp_cuota_2") && esPagoFamiliar)
+              if ((cuotasPagadasAhoraLocal.has("mp_cuota_2")) && esPagoFamiliar)
                 estados.push("C2 Familiar Pagada");
               else if (prevPagada2 && estadoAIHermano.includes("C2 Familiar"))
                 estados.push("C2 Familiar Pagada");
@@ -646,11 +592,10 @@ function subirComprobanteManual(
             } else {
               estados.push("C2 Pendiente");
             }
-
             // Cuota 3
             if (ahoraPagada3) {
               pagadasCountHermano++;
-              if (cuotasPagadasAhora.has("mp_cuota_3") && esPagoFamiliar)
+              if ((cuotasPagadasAhoraLocal.has("mp_cuota_3")) && esPagoFamiliar)
                 estados.push("C3 Familiar Pagada");
               else if (prevPagada3 && estadoAIHermano.includes("C3 Familiar"))
                 estados.push("C3 Familiar Pagada");
@@ -658,47 +603,37 @@ function subirComprobanteManual(
             } else {
               estados.push("C3 Pendiente");
             }
-
-            // Asegurar que las cuotas seleccionadas en la operación familiar se marquen como 'Familiar Pagada'
-            const selectedIdxHermano = Array.from(cuotasPagadasAhora)
-              .map((s) => parseInt(s.split("_").pop()))
-              .filter((n) => !isNaN(n));
-            selectedIdxHermano.forEach((idx) => {
-              if (idx >= 1 && idx <= (cantidadCuotasHermano || 3)) {
-                // Ajustar el texto correspondiente (índice - 1)
-                const pos = idx - 1;
-                // Si la posición existe en el array estados, forzar 'CN Familiar Pagada'
-                if (estados[pos] !== undefined) {
-                  estados[pos] = `C${idx} Familiar Pagada`;
-                }
-              }
-            });
-
+            
+            // (Lógica de forzar "Familiar" movida arriba)
+            
             if (cantidadCuotasHermano === 2) estados = [estados[0], estados[1]];
             if (cantidadCuotasHermano === 1) estados = [estados[0]];
 
-            // Recalcular pagadasCountHermano tras forzar etiquetas familiares
             pagadasCountHermano = estados.filter(
               (s) => !s.toLowerCase().includes("pendiente")
             ).length;
 
-            // Si el método es Transferencia/Efectivo (cantidadCuotasHermano === 0) y se adjuntó comprobante,
-            // tratar como Pago Total Familiar y escribir comprobante total en AQ.
             if (cantidadCuotasHermano === 0 && fileUrlHermano) {
-              hoja
-                .getRange(filaHermano, COL_COMPROBANTE_MANUAL_TOTAL_EXT)
-                .setValue(fileUrlHermano);
-              hoja
+               hoja
                 .getRange(filaHermano, COL_ESTADO_PAGO)
-                .setValue("Pagado Total Familiar");
-              return { esTotal: true, nuevoEstado: "Pagado Total Familiar" };
+                .setValue(esPagoFamiliar ? "Pago Total Familiar" : "Pagado");
+              return { esTotal: true, nuevoEstado: esPagoFamiliar ? "Pago Total Familiar" : "Pagado" };
             }
 
             let nuevoEstadoH = "";
-            if (pagadasCountHermano === 0) {
-              nuevoEstadoH = `Pendiente (${cantidadCuotasHermano} Cuotas)`;
+            const esTotalHermano = cantidadCuotasHermano > 0 && pagadasCountHermano >= cantidadCuotasHermano;
+            
+            if (esTotalHermano) {
+                nuevoEstadoH = estados.join(", ");
+            } else if (pagadasCountHermano === 0) {
+              nuevoEstadoH = `Pendiente (${cantidadCuotasHermano || 3} Cuotas)`;
             } else {
               nuevoEstadoH = estados.join(", ");
+            }
+
+            // Si el hermano NO es de cuotas, pero el principal pagó total
+            if (metodoPagoHermano !== "Pago en Cuotas" && esPagoTotalPrincipal) {
+                nuevoEstadoH = esPagoFamiliar ? "Pago Total Familiar" : "Pagado";
             }
 
             hoja.getRange(filaHermano, COL_ESTADO_PAGO).setValue(nuevoEstadoH);
@@ -707,9 +642,7 @@ function subirComprobanteManual(
             );
 
             return {
-              esTotal:
-                cantidadCuotasHermano > 0 &&
-                pagadasCountHermano >= cantidadCuotasHermano,
+              esTotal: esTotalHermano || (compTotalh && String(compTotalh).trim() !== ""),
               nuevoEstado: nuevoEstadoH,
             };
           };
@@ -847,54 +780,3 @@ function subirComprobanteManual(
     lock.releaseLock();
   }
 }
-
-/**
- * (MODIFICADO)
- * Sube un archivo a Drive con un nombre de archivo específico.
- * Devuelve un =HYPERLINK() para la hoja de cálculo.
- */
-function uploadFileToDrive(data, mimeType, newFilename, dni, tipoArchivo) {
-  try {
-    if (!dni) return { status: "ERROR", message: "No se recibió DNI." };
-    let parentFolderId;
-    switch (tipoArchivo) {
-      case "foto":
-        parentFolderId = FOLDER_ID_FOTOS;
-        break;
-      case "ficha":
-        parentFolderId = FOLDER_ID_FICHAS;
-        break;
-      case "comprobante":
-        parentFolderId = FOLDER_ID_COMPROBANTES;
-        break;
-      default:
-        return { status: "ERROR", message: "Tipo de archivo no reconocido." };
-    }
-    if (!parentFolderId || parentFolderId.includes("AQUI_VA_EL_ID")) {
-      return { status: "ERROR", message: "IDs de carpetas no configurados." };
-    }
-
-    const parentFolder = DriveApp.getFolderById(parentFolderId);
-    let subFolder;
-    const folders = parentFolder.getFoldersByName(dni);
-    subFolder = folders.hasNext()
-      ? folders.next()
-      : parentFolder.createFolder(dni);
-
-    const decodedData = Utilities.base64Decode(data.split(",")[1]);
-    const blob = Utilities.newBlob(decodedData, mimeType, newFilename);
-    const file = subFolder.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-
-    // --- (MODIFICACIÓN) ---
-    // Devolver la URL con el nombre de archivo como hipervínculo para la hoja
-    return `=HYPERLINK("${file.getUrl()}"; "${newFilename}")`;
-    // --- (FIN MODIFICACIÓN) ---
-  } catch (e) {
-    Logger.log("Error en uploadFileToDrive: " + e.toString());
-    return { status: "ERROR", message: "Error al subir archivo: " + e.message };
-  }
-}
-
-// Simulador de pruebas eliminado: si necesita volver a realizar pruebas localmente,
-// puede reactivar una copia de este bloque en su entorno local o mantenerlo en una rama separada.
