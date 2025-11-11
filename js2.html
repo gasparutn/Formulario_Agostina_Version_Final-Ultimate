@@ -1,0 +1,424 @@
+<script>
+// =========================================================
+// ARCHIVO: js2.html
+// Funciones Utilitarias, de DOM y de Caché (Estables)
+// =========================================================
+
+/**
+ * Comprime una imagen o lee un archivo como Base64.
+ */
+function comprimirYLeerArchivo(file) {
+  const MAX_WIDTH = 1024;
+  const QUALITY = 0.7;
+  const mimeType = file.type;
+
+  return new Promise((resolve, reject) => {
+    if (mimeType !== 'image/jpeg' && mimeType !== 'image/png') {
+      readFileAsBase64(file).then(data => {
+        resolve({ data, mimeType, fileName: file.name });
+      }).catch(reject);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_WIDTH) {
+            width *= MAX_WIDTH / height;
+            height = MAX_WIDTH;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        const compressedData = canvas.toDataURL('image/jpeg', QUALITY);
+        resolve({
+          data: compressedData,
+          mimeType: 'image/jpeg',
+          fileName: file.name.replace(/\.[^/.]+$/, "") + ".jpg"
+        });
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * Lee un archivo genérico (como PDF) y lo devuelve como Base64.
+ */
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = (error) => reject(error);
+    reader.readAsDataURL(file);
+  });
+}
+
+
+/**
+ * Calcula y muestra la edad en un div específico.
+ */
+function calcularYMostrarEdad(fechaNacimientoStr, divId) {
+  let fechaNac = fechaNacimientoStr;
+  let divEdad = divId;
+
+  if (!fechaNacimientoStr || (fechaNacimientoStr && typeof fechaNacimientoStr === 'object')) { 
+    fechaNac = document.getElementById('fechaNacimiento').value;
+    divEdad = document.getElementById('edad-calculada');
+  }
+
+  if (!fechaNac) {
+    if (divEdad) divEdad.textContent = '';
+    return;
+  }
+
+  const fechaNacimiento = new Date(fechaNac);
+  const hoy = new Date();
+  fechaNacimiento.setMinutes(fechaNacimiento.getMinutes() + fechaNacimiento.getTimezoneOffset());
+  let anos = hoy.getFullYear() - fechaNacimiento.getFullYear();
+  let meses = hoy.getMonth() - fechaNacimiento.getMonth();
+  let dias = hoy.getDate() - fechaNacimiento.getDate();
+  if (dias < 0) {
+    meses--;
+    dias += new Date(hoy.getFullYear(), hoy.getMonth(), 0).getDate();
+  }
+  if (meses < 0) {
+    anos--;
+    meses += 12;
+  }
+  if (anos >= 0) {
+    if (divEdad) divEdad.textContent = `Edad actual: ${anos} años, ${meses} meses y ${dias} días.`;
+  } else {
+    if (divEdad) divEdad.textContent = '';
+  }
+}
+
+/**
+ * Muestra/oculta un campo 'especifique' basado en un radio button 'Sí'.
+ */
+function toggleEspecifique(radioName, inputId) {
+  const radioChecked = document.querySelector(`input[name="${radioName}"]:checked`);
+  const inputField = document.getElementById(inputId);
+  if (radioChecked && radioChecked.value === 'Sí') {
+    inputField.style.display = 'block';
+    inputField.required = true; 
+  } else {
+    inputField.style.display = 'none';
+    inputField.value = '';
+    inputField.required = false;
+  }
+}
+
+/**
+ * Muestra/oculta la info de CBU para Cuotas.
+ */
+function toggleCuotasInfo() {
+  const metodoPago = document.getElementById('metodoPago').value;
+  const show = (metodoPago === 'Pago en Cuotas');
+
+  const containerAlias = document.getElementById('cuotas-transferencia-info');
+  if(containerAlias) containerAlias.style.display = show ? 'block' : 'none';
+}
+
+/**
+ * Muestra/oculta la info de CBU para Transferencia.
+ */
+function toggleTransferenciaInfo() {
+  const metodoPago = document.getElementById('metodoPago').value;
+  const container = document.getElementById('transferencia-info');
+  container.style.display = (metodoPago === 'Transferencia') ? 'block' : 'none';
+}
+
+/**
+ * Función genérica para remover una fila dinámica (padre del botón).
+ */
+function removerFila(boton) {
+  boton.parentElement.remove();
+  guardarFormEnCache();
+}
+
+/**
+ * Agrega campos para una persona autorizada (Formulario Principal).
+ */
+function addAutorizadoCampos(nombre = '', dni = '') {
+  const container = document.getElementById('autorizados-container');
+  const div = document.createElement('div');
+  div.className = 'fila-dinamica';
+
+  const isRequired = (container.children.length === 0) ? 'required' : '';
+
+  div.innerHTML = `
+  <div class="campos-dinamicos">
+  <input type="text" class="autorizado-nombre form-cache" placeholder="Nombre y Apellido (Relación)" value="${nombre}" ${isRequired}>
+  <input type="tel" class="autorizado-dni form-cache" placeholder="DNI (8 dígitos)" maxlength="8" pattern="[0-9]{8}" inputmode="numeric" value="${dni}" ${isRequired} title="El DNI debe tener exactamente 8 dígitos numéricos.">
+  </div>
+  <button type="button" class="btn-remover" onclick="removerFila(this)">X</button>
+  `;
+  container.appendChild(div);
+}
+
+/**
+ * Agrega campos para una persona autorizada (Formulario de Edición).
+ */
+function addAutorizadoCamposEdicion(nombre = '', dni = '') {
+  const container = document.getElementById('edit-autorizados-container');
+  const div = document.createElement('div');
+  div.className = 'fila-dinamica';
+
+  div.innerHTML = `
+  <div class="campos-dinamicos">
+  <input type="text" class="edit-autorizado-nombre" placeholder="Nombre y Apellido (Relación)" value="${nombre}">
+  <input type="tel" class="edit-autorizado-dni" placeholder="DNI (8 dígitos)" maxlength="8" pattern="[0-9]{8}" inputmode="numeric" value="${dni}" title="El DNI debe tener exactamente 8 dígitos numéricos.">
+  </div>
+  <button type="button" class="btn-remover" onclick="removerFila(this)">X</button>
+  `;
+  container.appendChild(div);
+}
+
+/**
+ * Agrega campos para un hermano/a.
+ * (CORREGIDO) Acepta el 'tipo' ('nuevo', 'anterior', 'preventa')
+ */
+function addHermanoCampos(data = {}, tipo = 'nuevo') {
+  const container = document.getElementById('hermanos-container');
+  const div = document.createElement('div');
+  div.className = 'fila-dinamica';
+  const uniqueId = 'hermano_edad_' + container.children.length;
+
+  const dni = data.dni || '';
+  const nombre = data.nombre || '';
+  const apellido = data.apellido || '';
+  const obraSocial = data.obraSocial || '';
+  const colegio = data.colegio || '';
+  
+  // =========================================================
+  // --- ¡¡INICIO DE LA CORRECCIÓN!! ---
+  // (El 'data.fechaNac' del servidor ahora es 'data.fechaNacimiento')
+  // =========================================================
+  const fechaNac = data.fechaNacimiento || '';
+  // =========================================================
+  // --- ¡¡FIN DE LA CORRECCIÓN!! ---
+  // =========================================================
+
+  let tipoNormalizado = 'nuevo';
+  if (tipo && tipo.includes('preventa')) tipoNormalizado = 'preventa';
+  if (tipo && tipo.includes('anterior')) tipoNormalizado = 'anterior';
+
+  const claseNombre = 'hermano-nombre form-cache';
+  const claseApellido = 'hermano-apellido form-cache';
+  const claseObraSocial = 'hermano-obrasocial form-cache';
+  const claseColegio = 'hermano-colegio form-cache';
+  const claseFechaNac = 'hermano-fechanac form-cache';
+
+  const propsNombre = nombre ? `readonly class="campo-bloqueado ${claseNombre}"` : `class="${claseNombre}"`;
+  const propsApellido = apellido ? `readonly class="campo-bloqueado ${claseApellido}"` : `class="${claseApellido}"`;
+  const propsFechaNac = fechaNac ? `readonly class="campo-bloqueado ${claseFechaNac}"` : `class="${claseFechaNac}"`;
+
+  div.innerHTML = `
+  <div class="hermano-campos">
+  <input type="hidden" class="hermano-tipo" value="${tipoNormalizado}">
+  <input type="text" ${propsNombre} placeholder="Nombre Hermano/a" value="${nombre}" required>
+  <input type="text" ${propsApellido} placeholder="Apellido Hermano/a" value="${apellido}" required>
+
+  <input type="text" class="${claseObraSocial}" placeholder="Obra Social Hermano/a" value="${obraSocial}" required>
+  <input type="text" class="${claseColegio}" placeholder="Colegio/Jardín Hermano/a" value="${colegio}" required>
+
+  <input type="tel" readonly class="campo-bloqueado form-cache hermano-dni" placeholder="DNI Hermano/a (8 dígitos)" value="${dni}" maxlength="8" pattern="[0-9]{8}" inputmode="numeric" required title="El DNI debe tener exactamente 8 dígitos numéricos.">
+  
+  <input type="date" ${propsFechaNac} value="${fechaNac}" required oninput="calcularYMostrarEdad(this.value, '${uniqueId}')" min="2010-01-01" max="2023-12-31">
+
+  <div class="hermano-dni-error" style="color: red; font-size: 0.85em; grid-column: 1 / 2; margin-top: -10px; min-height: 1.2em;"></div>
+  <div class="hermano-fecha-error" style="color: red; font-size: 0.85em; grid-column: 2 / 3; margin-top: -10px; min-height: 1.2em;"></div>
+
+  <div id="${uniqueId}" class="edad-calculada" style="grid-column: 1 / -1; font-size: 0.9em; margin-top: 5px; margin-left: 5px;"></div>
+  </div>
+  <button type="button" class="btn-remover" onclick="removerFila(this)">X</button>
+  `;
+  container.appendChild(div);
+
+  if (fechaNac) {
+    calcularYMostrarEdad(fechaNac, document.getElementById(uniqueId));
+  }
+}
+
+/**
+ * Guarda los datos del formulario en localStorage.
+ */
+function guardarFormEnCache() {
+  try {
+    const data = {};
+    document.querySelectorAll('.form-cache').forEach(el => {
+      const key = el.id || el.name;
+      if (!key) return; 
+
+      if (el.disabled) {
+        return;
+      }
+      
+      if (el.readOnly && !el.id) {
+         data[key] = el.value;
+      }
+
+      if (el.readOnly && el.id) {
+        data[key] = el.value;
+        return;
+      }
+
+      if (el.type === 'radio') {
+        if (el.checked) {
+          data[el.name] = el.value;
+        }
+      } else if (!el.readOnly) {
+        data[key] = el.value;
+      }
+    });
+
+    data.autorizados = [];
+    const nombresAut = document.querySelectorAll('.autorizado-nombre');
+    const dnisAut = document.querySelectorAll('.autorizado-dni');
+    for (let i = 0; i < dnisAut.length; i++) {
+      if (nombresAut[i].value || dnisAut[i].value) { 
+        data.autorizados.push({ n: nombresAut[i].value, d: dnisAut[i].value });
+      }
+    }
+
+    data.hermanos = [];
+    const nombresHermano = document.querySelectorAll('.hermano-nombre');
+    const apellidosHermano = document.querySelectorAll('.hermano-apellido');
+    const obrasSocialesHermano = document.querySelectorAll('.hermano-obrasocial');
+    const colegiosHermano = document.querySelectorAll('.hermano-colegio');
+    const dnisHermano = document.querySelectorAll('.hermano-dni');
+    const fechasNacHermano = document.querySelectorAll('.hermano-fechanac');
+    const tiposHermano = document.querySelectorAll('.hermano-tipo');
+    
+    for (let i = 0; i < dnisHermano.length; i++) {
+        data.hermanos.push({
+          n: (nombresHermano[i] ? nombresHermano[i].value : ''),
+          a: (apellidosHermano[i] ? apellidosHermano[i].value : ''),
+          os: (obrasSocialesHermano[i] ? obrasSocialesHermano[i].value : ''),
+          c: (colegiosHermano[i] ? colegiosHermano[i].value : ''),
+          d: (dnisHermano[i] ? dnisHermano[i].value : ''),
+          f: (fechasNacHermano[i] ? fechasNacHermano[i].value : ''),
+          t: (tiposHermano[i] ? tiposHermano[i].value : '')
+        });
+    }
+
+    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+
+  } catch (e) {
+    console.warn("No se pudo guardar el caché del formulario: ", e);
+  }
+}
+
+/**
+ * Carga los datos del formulario desde localStorage.
+ */
+function cargarFormDesdeCache() {
+  try {
+    const data = JSON.parse(localStorage.getItem(CACHE_KEY));
+    if (!data) return;
+
+    document.querySelectorAll('.form-cache').forEach(el => {
+      const key = el.id || el.name;
+      if (!key) return;
+
+      if (data[key] !== undefined) {
+        if (el.type === 'radio') {
+          el.checked = (el.value === data[key]);
+        } else {
+          el.value = data[key];
+        }
+      }
+    });
+
+    if (data.autorizados && data.autorizados.length > 0) {
+      const autContainer = document.getElementById('autorizados-container');
+      autContainer.innerHTML = '';
+      data.autorizados.forEach(aut => {
+        addAutorizadoCampos(aut.n || '', aut.d || '');
+      });
+    }
+
+    if (data.hermanos && data.hermanos.length > 0) {
+      const hermContainer = document.getElementById('hermanos-container');
+      hermContainer.innerHTML = '';
+      
+      data.hermanos.forEach(herm => {
+        addHermanoCampos({
+          dni: herm.d || '',
+          nombre: herm.n || '',
+          apellido: herm.a || '',
+          obraSocial: herm.os || '',
+          colegio: herm.c || '',
+          fechaNacimiento: herm.f || ''
+        }, herm.t || 'nuevo');
+      });
+    }
+
+    calcularYMostrarEdad();
+    toggleTransferenciaInfo();
+    toggleCuotasInfo(); 
+
+  } catch (e) {
+    console.warn("No se pudo cargar el caché del formulario: ", e);
+  }
+}
+
+/**
+ * Limpia todo el caché de localStorage.
+ * (CORREGIDO) Ahora también limpia las claves de autovalidación.
+ */
+function limpiarCache() {
+  localStorage.removeItem(CACHE_KEY);
+  localStorage.removeItem('pendingSiblings');
+  // =========================================================
+  // --- ¡¡INICIO DE LA CORRECCIÓN!! ---
+  // (Añadidas para prevenir bucles)
+  // =========================================================
+  localStorage.removeItem('autoValidateDNI');
+  localStorage.removeItem('autoValidateType');
+  // =========================================================
+  // --- ¡¡FIN DE LA CORRECCIÓN!! ---
+  // =========================================================
+}
+
+/**
+ * (NUEVO) Muestra un modal de sesión expirada y recarga la página.
+ */
+function mostrarModalExpirado(mensaje) {
+  const modal = document.getElementById('expirado-modal-backdrop');
+  if (!modal) return;
+  
+  document.getElementById('expirado-modal-mensaje').textContent = mensaje;
+  modal.style.display = 'flex';
+  
+  let segundos = 3;
+  const countdownDisplay = document.getElementById('expirado-modal-countdown');
+  countdownDisplay.textContent = `Redireccionando en ${segundos} segundos...`;
+
+  const interval = setInterval(() => {
+    segundos--;
+    countdownDisplay.textContent = `Redireccionando en ${segundos} segundos...`;
+    if (segundos <= 0) {
+      clearInterval(interval);
+      limpiarCache(); // Limpiar todo
+      window.top.location.href = GLOBAL_APP_URL; // Recargar
+    }
+  }, 1000);
+}
+</script>
