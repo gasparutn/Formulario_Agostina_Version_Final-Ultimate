@@ -409,31 +409,50 @@ function mostrarModalExpirado(mensaje) {
   
   let segundos = 3;
   const countdownDisplay = document.getElementById('expirado-modal-countdown');
+  const volverButton = document.getElementById('btn-modal-expirado-volver');
+
+  // --- (INICIO DE CORRECCIÓN: Lógica de Botón Manual) ---
+  
+  // 1. Ocultar el botón y mostrar el contador al inicio
+  volverButton.style.display = 'none';
+  countdownDisplay.style.display = 'block';
   countdownDisplay.textContent = `Redireccionando en ${segundos} segundos...`;
 
+  // 2. Asignar el click listener UNA VEZ
+  volverButton.onclick = function() {
+    try {
+      this.disabled = true;
+      this.textContent = "Cargando...";
+      limpiarCache();
+      // Esta es la acción de clic de usuario, que SÍ funcionará
+      // Usamos window.top.location.href para salir del iframe y recargar la URL principal
+      window.top.location.href = GLOBAL_APP_URL; 
+    } catch(e) {
+      console.error("Error en click de volver:", e);
+      countdownDisplay.textContent = "Error. Recargue manualmente.";
+      countdownDisplay.style.display = 'block';
+    }
+  };
+  
+  // 3. Iniciar el temporizador
   const interval = setInterval(() => {
     segundos--;
     
     if (segundos <= 0) {
-      // --- (INICIO DE CORRECCIÓN: Error "Error al redireccionar") ---
+      // 4. Se acabó el tiempo
       clearInterval(interval);
-      countdownDisplay.textContent = "Redireccionando ahora...";
       
-      try {
-        limpiarCache(); // Limpiar el caché para un reinicio limpio
-        
-        // CORRECCIÓN: Usar window.location.href. Esto es más simple
-        // y más efectivo para forzar la recarga del script.
-        window.location.href = GLOBAL_APP_URL; 
+      // 5. Ocultar el countdown
+      countdownDisplay.style.display = 'none';
+      
+      // 6. Mostrar el botón
+      volverButton.style.display = 'block';
 
-      } catch(e) {
-        console.error("Error al redireccionar:", e);
-        countdownDisplay.textContent = "Error al redireccionar. Recargue manualmente.";
-      }
-      // --- (FIN DE CORRECCIÓN) ---
     } else {
+      // 7. Actualizar el countdown
       countdownDisplay.textContent = `Redireccionando en ${segundos} segundos...`;
     }
   }, 1000);
+  // --- (FIN DE CORRECCIÓN) ---
 }
 </script>

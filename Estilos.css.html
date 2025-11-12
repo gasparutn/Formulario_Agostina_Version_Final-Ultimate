@@ -726,17 +726,18 @@
     margin-top: 15px;
   }
 
- #edit-timer {
-    font-size: 1.1em;
+  #edit-timer {
+    /* (CORRECCIÓN) Estilos para hacer el temporizador prominente */
+    float: right; /* Usar float para posicionar a la derecha */
+    font-size: 1rem; /* Tamaño de fuente base */
     font-weight: bold;
-    color: var(--color-error); /* Texto rojo */
-    text-align: center;
-    margin: 10px 0 15px 0; /* Espacio arriba y abajo */
-    padding: 8px;
-    background-color: #f8d7da; /* Fondo rojo claro */
-    border-radius: 5px;
-    display: none; /* Se activa con JS */
+    color: white;
+    background-color: #e74c3c; /* Rojo llamativo */
+    padding: 5px 10px;
+    border-radius: 20px; /* Forma de píldora */
+    margin-left: 15px; /* Espacio a la izquierda */
   }
+
   /* (NUEVO) Estilos para el Modal de Tiempo Expirado */
   #expirado-modal-backdrop {
     position: fixed;
@@ -768,6 +769,24 @@
     font-weight: bold;
     color: #6c757d;
   }
+
+  /* (INICIO DE MODIFICACIÓN) Estilo para el nuevo botón del modal */
+  #btn-modal-expirado-volver {
+    background-color: var(--color-principal);
+    color: white;
+    padding: 12px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1em;
+    margin-top: 20px;
+    width: 100%;
+    transition: background-color 0.3s ease;
+  }
+  #btn-modal-expirado-volver:hover {
+    background-color: #0056b3;
+  }
+  /* (FIN DE MODIFICACIÓN) */
 
   /* (NUEVO) Estilos para la barra de progreso */
   #progress-bar-container {

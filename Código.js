@@ -52,6 +52,8 @@ function doPost(e) {
 * (FIX #2) Corregida la asignación de teléfonos para nuevos usuarios.
 * (FIX #4) Corregida la asignación de estado para 'Hermano/a'.
 * (FIX #5 - Error 1) Añadidos los campos de salud que faltaban.
+* (CORRECCIÓN FECHA) Añadida la corrección de zona horaria al guardar fechas.
+* (CORRECCIÓN SINTAXIS) Corregida la concatenación de 'telResp' para evitar 'Unexpected token'.
 */
 function registrarDatos(datos, testSheetName) {
   Logger.log("REGISTRAR DATOS INICIADO. Datos: " + JSON.stringify(datos));
@@ -105,7 +107,7 @@ function registrarDatos(datos, testSheetName) {
     let hojaRegistro = ss.getSheetByName(hojaRegistroName);
     
     if (!hojaRegistro) {
-      return { status: 'ERROR', message: `Hoja de registros '${hojaRegistroName}' no encontrada.` };
+      return { status: 'ERROR', message: "Hoja de registros '" + hojaRegistroName + "' no encontrada." };
     }
 
     // Normalizar DNI
@@ -124,13 +126,35 @@ function registrarDatos(datos, testSheetName) {
     if (filaExistente) {
       try {
         // Actualizar campos principales (similar a actualizarDatosHermano pero para registro principal)
-        const telResp1 = datos.telAreaResp1 && datos.telNumResp1 ? `(${datos.telAreaResp1}) ${datos.telNumResp1}` : datos.telResp1 || '';
-        const telResp2 = datos.telAreaResp2 && datos.telNumResp2 ? `(${datos.telAreaResp2}) ${datos.telNumResp2}` : datos.telResp2 || '';
+        
+        // =========================================================
+        // --- ¡¡INICIO CORRECCIÓN SINTAXIS 'const'!! ---
+        // (Usamos + en lugar de `` para evitar errores del editor)
+        // =========================================================
+        const telResp1 = datos.telAreaResp1 && datos.telNumResp1 ? '(' + datos.telAreaResp1 + ') ' + datos.telNumResp1 : datos.telResp1 || '';
+        const telResp2 = datos.telAreaResp2 && datos.telNumResp2 ? '(' + datos.telAreaResp2 + ') ' + datos.telNumResp2 : datos.telResp2 || '';
+        // =========================================================
+        // --- ¡¡FIN CORRECCIÓN SINTAXIS!! ---
+        // =========================================================
 
         hojaRegistro.getRange(filaExistente, COL_EMAIL).setValue(datos.email || '');
         hojaRegistro.getRange(filaExistente, COL_NOMBRE).setValue(datos.nombre || '');
         hojaRegistro.getRange(filaExistente, COL_APELLIDO).setValue(datos.apellido || '');
-        hojaRegistro.getRange(filaExistente, COL_FECHA_NACIMIENTO_REGISTRO).setValue(datos.fechaNacimiento || '');
+
+        // =========================================================
+        // --- ¡¡INICIO CORRECCIÓN ZONA HORARIA (1 de 2)!! ---
+        // (Corregimos la fecha antes de guardarla)
+        // =========================================================
+        let fechaNacObj = null;
+        if (datos.fechaNacimiento) {
+          fechaNacObj = new Date(datos.fechaNacimiento); // Crea la fecha (ej: 2010-10-20T00:00:00Z)
+          fechaNacObj.setMinutes(fechaNacObj.getMinutes() + fechaNacObj.getTimezoneOffset()); // Ajusta a local (ej: 2010-10-20T00:00:00-03:00)
+        }
+        hojaRegistro.getRange(filaExistente, COL_FECHA_NACIMIENTO_REGISTRO).setValue(fechaNacObj || '');
+        // =========================================================
+        // --- ¡¡FIN CORRECCIÓN ZONA HORARIA (1 de 2)!! ---
+        // =========================================================
+
         hojaRegistro.getRange(filaExistente, COL_OBRA_SOCIAL).setValue(datos.obraSocial || '');
         hojaRegistro.getRange(filaExistente, COL_COLEGIO_JARDIN).setValue(datos.colegioJardin || '');
         hojaRegistro.getRange(filaExistente, COL_ADULTO_RESPONSABLE_1).setValue(datos.adultoResponsable1 || '');
@@ -247,15 +271,29 @@ function registrarDatos(datos, testSheetName) {
     valoresFila[COL_EMAIL - 1] = datos.email || '';
     valoresFila[COL_NOMBRE - 1] = datos.nombre || '';
     valoresFila[COL_APELLIDO - 1] = datos.apellido || '';
-    valoresFila[COL_FECHA_NACIMIENTO_REGISTRO - 1] = datos.fechaNacimiento || '';
+
+    // =========================================================
+    // --- ¡¡INICIO CORRECCIÓN ZONA HORARIA (2 de 2)!! ---
+    // (Corregimos la fecha antes de guardarla)
+    // =========================================================
+    let fechaNacObjNueva = null;
+    if (datos.fechaNacimiento) {
+      fechaNacObjNueva = new Date(datos.fechaNacimiento);
+      fechaNacObjNueva.setMinutes(fechaNacObjNueva.getMinutes() + fechaNacObjNueva.getTimezoneOffset());
+    }
+    valoresFila[COL_FECHA_NACIMIENTO_REGISTRO - 1] = fechaNacObjNueva || '';
+    // =========================================================
+    // --- ¡¡FIN CORRECCIÓN ZONA HORARIA (2 de 2)!! ---
+    // =========================================================
+
     valoresFila[COL_DNI_INSCRIPTO - 1] = dniLimpio || '';
     valoresFila[COL_OBRA_SOCIAL - 1] = datos.obraSocial || '';
     valoresFila[COL_COLEGIO_JARDIN - 1] = datos.colegioJardin || '';
     valoresFila[COL_ADULTO_RESPONSABLE_1 - 1] = datos.adultoResponsable1 || '';
     valoresFila[COL_DNI_RESPONSABLE_1 - 1] = datos.dniResponsable1 || '';
 
-    const telResp1 = (datos.telAreaResp1 && datos.telNumResp1) ? `(${datos.telAreaResp1}) ${datos.telNumResp1}` : '';
-    const telResp2 = (datos.telAreaResp2 && datos.telNumResp2) ? `(${datos.telAreaResp2}) ${datos.telNumResp2}` : '';
+    const telResp1 = (datos.telAreaResp1 && datos.telNumResp1) ? '(' + datos.telAreaResp1 + ') ' + datos.telNumResp1 : '';
+    const telResp2 = (datos.telAreaResp2 && datos.telNumResp2) ? '(' + datos.telAreaResp2 + ') ' + datos.telNumResp2 : '';
     valoresFila[COL_TEL_RESPONSABLE_1 - 1] = telResp1;
     valoresFila[COL_ADULTO_RESPONSABLE_2 - 1] = datos.adultoResponsable2 || '';
     valoresFila[COL_TEL_RESPONSABLE_2 - 1] = telResp2;
