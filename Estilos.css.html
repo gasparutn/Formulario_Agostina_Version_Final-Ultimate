@@ -726,18 +726,17 @@
     margin-top: 15px;
   }
 
-  #edit-timer {
-    /* (CORRECCIÓN) Estilos para hacer el temporizador prominente */
-    float: right; /* Usar float para posicionar a la derecha */
-    font-size: 1rem; /* Tamaño de fuente base */
+ #edit-timer {
+    font-size: 1.1em;
     font-weight: bold;
-    color: white;
-    background-color: #e74c3c; /* Rojo llamativo */
-    padding: 5px 10px;
-    border-radius: 20px; /* Forma de píldora */
-    margin-left: 15px; /* Espacio a la izquierda */
+    color: var(--color-error); /* Texto rojo */
+    text-align: center;
+    margin: 10px 0 15px 0; /* Espacio arriba y abajo */
+    padding: 8px;
+    background-color: #f8d7da; /* Fondo rojo claro */
+    border-radius: 5px;
+    display: none; /* Se activa con JS */
   }
-
   /* (NUEVO) Estilos para el Modal de Tiempo Expirado */
   #expirado-modal-backdrop {
     position: fixed;

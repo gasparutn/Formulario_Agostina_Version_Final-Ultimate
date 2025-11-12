@@ -209,7 +209,7 @@
       const comprobantesCompletosResp = !!response.comprobantesCompletos;
       if (!tieneCuotasPendientes && comprobantesCompletosResp && response.adeudaAptitud !== true) {
         // Mensaje final (reemplazado según petición del usuario)
-        html += `<div class="mensaje exito" style="margin-bottom:10px; text-align:justify;"><h3>¡Inscripción confirmada!</h3><p>¡Genial, ${nombreCompleto}! Su inscripción a la Colonia de Verano está confirmada y ya figura completa en nuestro sistema. Si necesita modificar algún dato de contacto, puede hacerlo validando nuevamente con su DNI y accedará al formulario.</p></div>`;
+        html += `<div class="mensaje exito" style="margin-bottom:10px; text-align:justify;"><h3>¡Inscripción confirmada!</h3><p>¡Genial, ${nombreCompleto}! Su inscripción a la Colonia de Verano está confirmada y figura completa en nuestro sistema. Si necesita modificar algún dato de contacto, puede hacerlo validando nuevamente con el DNI del inscripto/a y accedará al formulario.</p></div>`;
         // Nota: NO hacemos 'return' aquí para permitir que la sección de 'Editar' se agregue después
       }
 
@@ -321,7 +321,16 @@
       }
 
       // (Sección Editar)
-      html += `<div id="editar-info-seccion" style="margin-top: 20px;"><button type="button" id="btn-mostrar-editar" class="btn-editar">Editar Datos de Contacto / Autorizados</button><div id="editar-form-container" style="display: none; border: 2px dashed #007bff; padding: 15px; margin-top: 10px; background: #f8f9fa;"><h3>Editando Datos</h3><p>Modifique solo los campos necesarios. Los campos de DNI e Email del inscripto no se pueden cambiar.</p><label for="edit-dni">DNI Inscripto (Bloqueado)</label><input type="text" id="edit-dni" readonly class="campo-bloqueado"><label for="edit-email">Email (Bloqueado)</label><input type="email" id="edit-email" readonly class="campo-bloqueado"><label for="edit-adultoResponsable1">Adulto Responsable 1</label><input type="text" id="edit-adultoResponsable1" class="form-cache"><label for="edit-dniResponsable1">DNI Responsable 1</label><input type="tel" id="edit-dniResponsable1" class="form-cache" maxlength="8" pattern="[0-9]{8}"><label for="edit-telResp1">Tel. Responsable 1 (Ej: (261) 5123456)</label><input type="tel" id="edit-telResp1" class="form-cache"><label for="edit-adultoResponsable2">Adulto Responsable 2 (Opcional)</label><input type="text" id="edit-adultoResponsable2" class="form-cache"><label for="edit-telResp2">Tel. Responsable 2 (Opcional)</label><input type="tel" id="edit-telResp2" class="form-cache"><label>Personas Autorizadas (Edite la lista completa)</label><div id="edit-autorizados-container"></div><button type="button" id="btn-edit-add-autorizado" class="btn-dinamico" style="width: auto;">+ Agregar Autorizado</button><label for="edit-aptitud-upload" style="margin-top: 15px;">Reemplazar Certificado de Aptitud (Opcional)</label><p style="font-size: 0.9em; margin-bottom: 10px;">(Solo seleccione un archivo si desea reemplazar el existente o subir uno nuevo).</p><input type="file" id="edit-aptitud-upload" accept="image/jpeg, image/png, application/pdf"><label for="edit-aptitud-upload" class="file-input-label">Seleccionar Nuevo Certificado</label><span id="edit-aptitud-name" class="file-name">Ningún archivo seleccionado</span><div class="loader-archivo" id="loader-edit-aptitud"></div><input type="hidden" id="edit-urlCertificadoAptitud"><div style="display: flex; gap: 10px; margin-top: 20px;"><button type="button" id="btn-guardar-cambios" class="btn-guardar" style="width: 50%;">Guardar Cambios</button><button type="button" id="btn-cancelar-edicion" class="btn-cancelar" style="width: 50%;">Cancelar</button></div></div></div>`;
+     
+      // --- (INICIO DE MODIFICACIÓN: Se añade <div id="edit-timer"></div> debajo del h3) ---
+    
+    html += `<div id="editar-info-seccion" style="margin-top: 20px;"><button type="button" id="btn-mostrar-editar" class="btn-editar">Editar Datos de Contacto / Autorizados</button><div id="editar-form-container" style="display: none; border: 2px dashed #007bff; padding: 15px; margin-top: 10px; background: #f8f9fa;">
+      <h3>Editando Datos</h3>
+      <div id="edit-timer"></div>
+      <p>Modifique solo los campos necesarios. Los campos de DNI e Email del inscripto no se pueden cambiar.</p><label for="edit-dni">DNI Inscripto (Bloqueado)</label><input type="text" id="edit-dni" readonly class="campo-bloqueado"><label for="edit-email">Email (Bloqueado)</label><input type="email" id="edit-email" readonly class="campo-bloqueado"><label for="edit-adultoResponsable1">Adulto Responsable 1</label><input type="text" id="edit-adultoResponsable1" class="form-cache"><label for="edit-dniResponsable1">DNI Responsable 1</label><input type="tel" id="edit-dniResponsable1" class="form-cache" maxlength="8" pattern="[0-9]{8}"><label for="edit-telResp1">Tel. Responsable 1 (Ej: (261) 5123456)</label><input type="tel" id="edit-telResp1" class="form-cache"><label for="edit-adultoResponsable2">Adulto Responsable 2 (Opcional)</label><input type="text" id="edit-adultoResponsable2" class="form-cache"><label for="edit-telResp2">Tel. Responsable 2 (Opcional)</label><input type="tel" id="edit-telResp2" class="form-cache"><label>Personas Autorizadas (Edite la lista completa)</label><div id="edit-autorizados-container"></div><button type="button" id="btn-edit-add-autorizado" class="btn-dinamico" style="width: auto;">+ Agregar Autorizado</button><label for="edit-aptitud-upload" style="margin-top: 15px;">Reemplazar Certificado de Aptitud (Opcional)</label><p style="font-size: 0.9em; margin-bottom: 10px;">(Solo seleccione un archivo si desea reemplazar el existente o subir uno nuevo).</p><input type="file" id="edit-aptitud-upload" accept="image/jpeg, image/png, application/pdf"><label for="edit-aptitud-upload" class="file-input-label">Seleccionar Nuevo Certificado</label><span id="edit-aptitud-name" class="file-name">Ningún archivo seleccionado</span><div class="loader-archivo" id="loader-edit-aptitud"></div><input type="hidden" id="edit-urlCertificadoAptitud"><div style="display: flex; gap: 10px; margin-top: 20px;"><button type="button" id="btn-guardar-cambios" class="btn-guardar" style="width: 50%;">Guardar Cambios</button><button type="button" id="btn-cancelar-edicion" class="btn-cancelar" style="width: 50%;">Cancelar</button></div></div></div>`;
+
+      // ... (código sin cambios) ...
+      // --- (FIN DE MODIFICACIÓN) ---
 
       statusDiv.innerHTML = html;
       const tokenContainer = document.createElement('div');
@@ -596,6 +605,10 @@
 
     if (response.status === 'OK') {
       // Ocultar la sección del token y mostrar el formulario de edición
+     if (window.tokenTimerInterval) {
+        clearInterval(window.tokenTimerInterval);
+      }
+     
       if (tokenClone) tokenClone.style.display = 'none';
 
       mostrarFormEdicion(); // Llama a la función que prepara y muestra el form de edición
@@ -842,20 +855,13 @@
    * (NUEVO) Inicia y muestra el temporizador de 2 minutos para la edición.
    */
   function iniciarTemporizadorEdicion() {
-    let duracion = 10; // 3 minutos en segundos
+    let duracion = 180; // 3 minutos en segundos
     const timerDisplay = document.getElementById('edit-timer'); // (CORRECCIÓN) Usar getElementById que es más directo.
     if (!timerDisplay) return;
     
-    // (RESTAURADO) Aplicar estilos directamente con JS para garantizar la visibilidad.
-    timerDisplay.style.float = 'right';
-    timerDisplay.style.fontSize = '1rem';
-    timerDisplay.style.fontWeight = 'bold';
-    timerDisplay.style.color = 'white';
-    timerDisplay.style.backgroundColor = '#e74c3c';
-    timerDisplay.style.padding = '5px 10px';
-    timerDisplay.style.borderRadius = '20px';
-    timerDisplay.style.marginLeft = '15px';
-    timerDisplay.style.display = 'inline-block';
+    // Los estilos ahora se controlan por CSS. Solo nos aseguramos de que sea visible.
+    timerDisplay.style.display = 'block';
+   
     if (window.editTimerInterval) clearInterval(window.editTimerInterval);
 
     window.editTimerInterval = setInterval(function () {

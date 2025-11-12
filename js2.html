@@ -413,11 +413,26 @@ function mostrarModalExpirado(mensaje) {
 
   const interval = setInterval(() => {
     segundos--;
-    countdownDisplay.textContent = `Redireccionando en ${segundos} segundos...`;
+    
     if (segundos <= 0) {
+      // --- (INICIO DE CORRECCIÓN: Error "Error al redireccionar") ---
       clearInterval(interval);
-      limpiarCache(); // Limpiar todo
-      window.top.location.href = GLOBAL_APP_URL; // Recargar
+      countdownDisplay.textContent = "Redireccionando ahora...";
+      
+      try {
+        limpiarCache(); // Limpiar el caché para un reinicio limpio
+        
+        // CORRECCIÓN: Usar window.location.href. Esto es más simple
+        // y más efectivo para forzar la recarga del script.
+        window.location.href = GLOBAL_APP_URL; 
+
+      } catch(e) {
+        console.error("Error al redireccionar:", e);
+        countdownDisplay.textContent = "Error al redireccionar. Recargue manualmente.";
+      }
+      // --- (FIN DE CORRECCIÓN) ---
+    } else {
+      countdownDisplay.textContent = `Redireccionando en ${segundos} segundos...`;
     }
   }, 1000);
 }

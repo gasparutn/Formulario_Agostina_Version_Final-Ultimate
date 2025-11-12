@@ -171,13 +171,15 @@
     transform: scale(1.4); 
     accent-color: var(--color-principal);
   }
+  
+  /* --- (INICIO DE CORRECCIÓN: Error de visualización en celular) --- */
   #pago-familiar-container label,
   .cuota-checkbox-item label {
     margin: 0;
     font-weight: bold;
     color: #495057; 
-    display: flex; /* Para alinear el (Ya Pagada) */
-    align-items: center;
+    /* display: flex; */  /* <-- ELIMINADO: Esta línea causaba el error de superposición */
+    /* align-items: center; */ /* <-- ELIMINADO */
   }
   
   /* (NUEVO) Estilos para checkboxes deshabilitados */
@@ -193,7 +195,9 @@
     margin-left: 5px;
     font-size: 0.9em;
     text-decoration: none; /* Quitar el tachado del strong */
+    white-space: nowrap; /* Añadido: Evita que "(Ya Pagada)" se parta */
   }
+  /* --- (FIN DE CORRECCIÓN) --- */
 
 
   .cuota-checkbox-container {
