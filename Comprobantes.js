@@ -1,9 +1,10 @@
 /**
- * (MODIFICADO - v12 - CORRECCIÓN PAGO FAMILIAR TOTAL A CUOTAS)
+ * (MODIFICADO v15-CORREGIDO)
  * - Lógica de 'aplicarCambiosHermano' modificada.
  * - Si el pago principal es "Total" (externo) y el hermano paga "en Cuotas",
- * el comprobante se aplica a la PRIMERA CUOTA DISPONIBLE del hermano (AR, AS, o AT).
- * - Se actualiza el estado (AE, AF, AG) y el estado principal (AI) del hermano correctamente.
+ * el comprobante se aplica a la PRIMERA CUOTA DISPONIBLE del hermano (AO, AP, o AQ).
+ * - Se actualiza el estado (AF, AG, AH) y el estado principal (AJ) del hermano correctamente.
+ * - Se corrigen los comentarios de las constantes (ej. VINCULO ahora es AR).
  */
 function subirComprobanteManual(
   dni,
@@ -93,22 +94,22 @@ function subirComprobanteManual(
           .getRange(filaAfectada, 1, 1, hoja.getLastColumn())
           .getValues()[0];
         const [c1, c2, c3] = [
-          rangoFila[COL_CUOTA_1 - 1],
-          rangoFila[COL_CUOTA_2 - 1],
-          rangoFila[COL_CUOTA_3 - 1],
+          rangoFila[COL_CUOTA_1 - 1], // AF
+          rangoFila[COL_CUOTA_2 - 1], // AG
+          rangoFila[COL_CUOTA_3 - 1], // AH
         ];
-        const estadoAIActual = String(rangoFila[COL_ESTADO_PAGO - 1] || "");
+        const estadoAIActual = String(rangoFila[COL_ESTADO_PAGO - 1] || ""); // AJ
 
         // (Corrección Bug 0>=0)
         let cantidadCuotasRegistrada = parseInt(
-          rangoFila[COL_CANTIDAD_CUOTAS - 1]
+          rangoFila[COL_CANTIDAD_CUOTAS - 1] // AI
         );
         if (
           metodoPago === "Pago en Cuotas" &&
           (isNaN(cantidadCuotasRegistrada) || cantidadCuotasRegistrada < 1)
         ) {
           cantidadCuotasRegistrada = 3;
-          hoja.getRange(filaAfectada, COL_CANTIDAD_CUOTAS).setValue(3);
+          hoja.getRange(filaAfectada, COL_CANTIDAD_CUOTAS).setValue(3); // AI
         } else if (isNaN(cantidadCuotasRegistrada)) {
           cantidadCuotasRegistrada = 0;
         }
@@ -123,9 +124,9 @@ function subirComprobanteManual(
         );
         // Determinar si la cuota estaba pagada previamente (en la fila) y si se está pagando AHORA
         // Considerar comprobantes asociados: si existe comprobante en columna correspondiente, contar como pagada
-        const comp1 = rangoFila[COL_COMPROBANTE_MANUAL_CUOTA1 - 1];
-        const comp2 = rangoFila[COL_COMPROBANTE_MANUAL_CUOTA2 - 1];
-        const comp3 = rangoFila[COL_COMPROBANTE_MANUAL_CUOTA3 - 1];
+        const comp1 = rangoFila[COL_COMPROBANTE_MANUAL_CUOTA1 - 1]; // AO
+        const comp2 = rangoFila[COL_COMPROBANTE_MANUAL_CUOTA2 - 1]; // AP
+        const comp3 = rangoFila[COL_COMPROBANTE_MANUAL_CUOTA3 - 1]; // AQ
         // Solo considerar una cuota como pagada previamente si existe un comprobante asociado.
         const prevPagada1 = comp1 && String(comp1).toString().trim() !== "";
         const prevPagada2 = comp2 && String(comp2).toString().trim() !== "";
@@ -154,7 +155,7 @@ function subirComprobanteManual(
           esTotal = true; // Pago total para Transferencia/Efectivo
         }
 
-        // 4. DETERMINAR ESTADO DE PAGO (Columna AI) (Corrección Bug 2)
+        // 4. DETERMINAR ESTADO DE PAGO (Columna AJ) (Corrección Bug 2)
         let nuevoEstadoPago = "";
         if (esTotal) {
           if (metodoPago === "Pago en Cuotas") {
@@ -241,17 +242,20 @@ function subirComprobanteManual(
           }
         }
 
-        // 5. ACUMULAR DATOS PAGADOR (Columnas AN/AO)
+        // 5. ACUMULAR DATOS PAGADOR (Columnas AL/AM)
         // --- (INICIO CORRECCIÓN v9 - Formato "Nombre Apellido" y "DNI") ---
         const datosNuevosNombre = nombrePagador; // Formato: "Nombre Apellido"
-        const datosNuevosDNI = dniPagador; // Columna AO solo DNI
+        const datosNuevosDNI = dniPagador; // Columna AM solo DNI
         // --- (FIN CORRECCIÓN v9) ---
 
         const celdaNombre = hoja.getRange(
           filaAfectada,
-          COL_PAGADOR_NOMBRE_MANUAL
-        ); // Columna AN
-        const celdaDNI = hoja.getRange(filaAfectada, COL_PAGADOR_DNI_MANUAL); // Columna AO
+          COL_PAGADOR_NOMBRE_MANUAL // Columna AL
+        );
+        const celdaDNI = hoja.getRange(
+          filaAfectada,
+          COL_PAGADOR_DNI_MANUAL // Columna AM
+        );
         const valorActualNombre = celdaNombre.getValue().toString().trim();
         const valorActualDNI = celdaDNI.getValue().toString().trim();
 
@@ -293,13 +297,13 @@ function subirComprobanteManual(
           nuevoEstadoPago = estadoProcesado;
         }
 
-        // 6. SETEAR ESTADO DE PAGO (Columna AI)
-        hoja.getRange(filaAfectada, COL_ESTADO_PAGO).setValue(nuevoEstadoPago);
+        // 6. SETEAR ESTADO DE PAGO (Columna AJ)
+        hoja.getRange(filaAfectada, COL_ESTADO_PAGO).setValue(nuevoEstadoPago); // AJ
         Logger.log(
           `aplicarCambios FIN fila:${filaAfectada} nuevoEstado:'${nuevoEstadoPago}' pagadasCount:${pagadasCount} cantidadCuotas:${cantidadCuotasRegistrada}`
         );
 
-        // 7. SETEAR LINK COMPROBANTE (Columnas AQ, AR, AS, AT)
+        // 7. SETEAR LINK COMPROBANTE (Columnas AN, AO, AP, AQ)
         // Escribir solo si se está pagando (fileUrl no está vacío)
         if (fileUrl) {
           if (
@@ -308,49 +312,49 @@ function subirComprobanteManual(
             (cuotasPagadasAhora.has("externo") || cuotasPagadasAhora.has("mp_total"))
           ) {
             hoja
-              .getRange(filaAfectada, COL_COMPROBANTE_MANUAL_TOTAL_EXT)
-              .setValue(fileUrl); // AQ
+              .getRange(filaAfectada, COL_COMPROBANTE_MANUAL_TOTAL_EXT) // AN
+              .setValue(fileUrl);
           } else {
             // 'Pago en Cuotas' -> escribir en todas las cuotas seleccionadas (no usar else-if)
             cuotasPagadasAhora.forEach((cuota) => {
               if (cuota === "mp_cuota_1")
                 hoja
-                  .getRange(filaAfectada, COL_COMPROBANTE_MANUAL_CUOTA1)
-                  .setValue(fileUrl); // AR
+                  .getRange(filaAfectada, COL_COMPROBANTE_MANUAL_CUOTA1) // AO
+                  .setValue(fileUrl);
               if (cuota === "mp_cuota_2")
                 hoja
-                  .getRange(filaAfectada, COL_COMPROBANTE_MANUAL_CUOTA2)
-                  .setValue(fileUrl); // AS
+                  .getRange(filaAfectada, COL_COMPROBANTE_MANUAL_CUOTA2) // AP
+                  .setValue(fileUrl);
               if (cuota === "mp_cuota_3")
                 hoja
-                  .getRange(filaAfectada, COL_COMPROBANTE_MANUAL_CUOTA3)
-                  .setValue(fileUrl); // AT
+                  .getRange(filaAfectada, COL_COMPROBANTE_MANUAL_CUOTA3) // AQ
+                  .setValue(fileUrl);
             });
           }
         }
 
-        // 8. SETEAR ESTADO CUOTAS (Columnas AE, AF, AG)
+        // 8. SETEAR ESTADO CUOTAS (Columnas AF, AG, AH)
         // (CORRECCIÓN) Solo modificar columnas de cuotas si el método de pago es "Pago en Cuotas"
         if (metodoPago === "Pago en Cuotas") {
           if (esTotal) {
             hoja
-              .getRange(filaAfectada, COL_CUOTA_1, 1, 3)
+              .getRange(filaAfectada, COL_CUOTA_1, 1, 3) // AF, AG, AH
               .setValues([["Pagada", "Pagada", "Pagada"]]);
           } else {
             // Solo marcar las cuotas pagadas AHORA
             cuotasPagadasAhora.forEach((cuota) => {
               if (cuota === "mp_cuota_1")
                 hoja
-                  .getRange(filaAfectada, COL_CUOTA_1)
-                  .setValue("Pagada (En revisión)"); // AE
+                  .getRange(filaAfectada, COL_CUOTA_1) // AF
+                  .setValue("Pagada (En revisión)");
               if (cuota === "mp_cuota_2")
                 hoja
-                  .getRange(filaAfectada, COL_CUOTA_2)
-                  .setValue("Pagada (En revisión)"); // AF
+                  .getRange(filaAfectada, COL_CUOTA_2) // AG
+                  .setValue("Pagada (En revisión)");
               if (cuota === "mp_cuota_3")
                 hoja
-                  .getRange(filaAfectada, COL_CUOTA_3)
-                  .setValue("Pagada (En revisión)"); // AG
+                  .getRange(filaAfectada, COL_CUOTA_3) // AH
+                  .setValue("Pagada (En revisión)");
             });
           }
         }
@@ -426,7 +430,7 @@ function subirComprobanteManual(
       let resultadoPrincipal;
 
       if (esPagoFamiliar) {
-        const idFamiliar = rangoFilaPrincipal[COL_VINCULO_PRINCIPAL - 1]; // AV (48)
+        const idFamiliar = rangoFilaPrincipal[COL_VINCULO_PRINCIPAL - 1]; // AR (44)
         if (!idFamiliar) {
           Logger.log(
             `Pago Familiar marcado, pero no se encontró ID Familiar en fila ${fila}. Aplicando solo al DNI ${dniLimpio}.`
@@ -435,7 +439,7 @@ function subirComprobanteManual(
         } else {
           const rangoVinculos = hoja.getRange(
             2,
-            COL_VINCULO_PRINCIPAL,
+            COL_VINCULO_PRINCIPAL, // AR (44)
             hoja.getLastRow() - 1,
             1
           );
@@ -453,9 +457,9 @@ function subirComprobanteManual(
             let filaDatos = hoja
               .getRange(filaHermano, 1, 1, hoja.getLastColumn())
               .getValues()[0];
-            const metodoPagoHermano = filaDatos[COL_METODO_PAGO - 1];
+            const metodoPagoHermano = filaDatos[COL_METODO_PAGO - 1]; // AC
             const cantidadCuotasHermano =
-              parseInt(filaDatos[COL_CANTIDAD_CUOTAS - 1]) || 0;
+              parseInt(filaDatos[COL_CANTIDAD_CUOTAS - 1]) || 0; // AI
             
             // Copia local del Set de cuotas del principal
             let cuotasPagadasAhoraLocal = new Set(cuotasPagadasAhora); 
@@ -463,9 +467,9 @@ function subirComprobanteManual(
 
             if (esPagoTotalPrincipal && metodoPagoHermano === "Pago en Cuotas") {
                 // El principal hizo un pago total. Esto debe contar como C1 (o la prox) para el hermano.
-                const comp1h = filaDatos[COL_COMPROBANTE_MANUAL_CUOTA1 - 1];
-                const comp2h = filaDatos[COL_COMPROBANTE_MANUAL_CUOTA2 - 1];
-                const comp3h = filaDatos[COL_COMPROBANTE_MANUAL_CUOTA3 - 1];
+                const comp1h = filaDatos[COL_COMPROBANTE_MANUAL_CUOTA1 - 1]; // AO
+                const comp2h = filaDatos[COL_COMPROBANTE_MANUAL_CUOTA2 - 1]; // AP
+                const comp3h = filaDatos[COL_COMPROBANTE_MANUAL_CUOTA3 - 1]; // AQ
 
                 // Busca el primer slot de cuota vacío
                 if (!comp1h || String(comp1h).trim() === "") {
@@ -475,18 +479,18 @@ function subirComprobanteManual(
                 } else if (!comp3h || String(comp3h).trim() === "") {
                     cuotasPagadasAhoraLocal.add("mp_cuota_3");
                 }
-                // Si todos están llenos, no se añade nada extra, pero el comprobante irá al "Total" (AQ)
+                // Si todos están llenos, no se añade nada extra, pero el comprobante irá al "Total" (AN)
             }
             
-            // 1) Append pagador manual (AN/AO)
+            // 1) Append pagador manual (AL/AM)
             if (fileUrlHermano) {
               const celdaNombreH = hoja.getRange(
                 filaHermano,
-                COL_PAGADOR_NOMBRE_MANUAL
+                COL_PAGADOR_NOMBRE_MANUAL // AL
               );
               const celdaDNIH = hoja.getRange(
                 filaHermano,
-                COL_PAGADOR_DNI_MANUAL
+                COL_PAGADOR_DNI_MANUAL // AM
               );
               const valNomAct = celdaNombreH.getValue().toString().trim();
               const valDniAct = celdaDNIH.getValue().toString().trim();
@@ -504,15 +508,15 @@ function subirComprobanteManual(
             if (metodoPagoHermano === "Pago en Cuotas") {
               if (cuotasPagadasAhoraLocal.has("mp_cuota_1"))
                 hoja
-                  .getRange(filaHermano, COL_CUOTA_1)
+                  .getRange(filaHermano, COL_CUOTA_1) // AF
                   .setValue("Pagada (En revisión)");
               if (cuotasPagadasAhoraLocal.has("mp_cuota_2"))
                 hoja
-                  .getRange(filaHermano, COL_CUOTA_2)
+                  .getRange(filaHermano, COL_CUOTA_2) // AG
                   .setValue("Pagada (En revisión)");
               if (cuotasPagadasAhoraLocal.has("mp_cuota_3"))
                 hoja
-                  .getRange(filaHermano, COL_CUOTA_3)
+                  .getRange(filaHermano, COL_CUOTA_3) // AH
                   .setValue("Pagada (En revisión)");
             }
             
@@ -520,20 +524,20 @@ function subirComprobanteManual(
             if (fileUrlHermano) {
                 if ((esPagoTotalPrincipal || cuotasPagadasAhoraLocal.has("externo") || cuotasPagadasAhoraLocal.has("mp_total")) && metodoPagoHermano !== "Pago en Cuotas") {
                     // Es un pago total (Efectivo/Transf) y el hermano también es de pago total
-                    hoja.getRange(filaHermano, COL_COMPROBANTE_MANUAL_TOTAL_EXT).setValue(fileUrlHermano); // AQ
+                    hoja.getRange(filaHermano, COL_COMPROBANTE_MANUAL_TOTAL_EXT).setValue(fileUrlHermano); // AN
                 } else {
                     // Es pago en cuotas (o fue forzado a serlo)
                     cuotasPagadasAhoraLocal.forEach((cuota) => {
                       if (cuota === "mp_cuota_1")
-                        hoja.getRange(filaHermano, COL_COMPROBANTE_MANUAL_CUOTA1).setValue(fileUrlHermano); // AR
+                        hoja.getRange(filaHermano, COL_COMPROBANTE_MANUAL_CUOTA1).setValue(fileUrlHermano); // AO
                       if (cuota === "mp_cuota_2")
-                        hoja.getRange(filaHermano, COL_COMPROBANTE_MANUAL_CUOTA2).setValue(fileUrlHermano); // AS
+                        hoja.getRange(filaHermano, COL_COMPROBANTE_MANUAL_CUOTA2).setValue(fileUrlHermano); // AP
                       if (cuota === "mp_cuota_3")
-                        hoja.getRange(filaHermano, COL_COMPROBANTE_MANUAL_CUOTA3).setValue(fileUrlHermano); // AT
+                        hoja.getRange(filaHermano, COL_COMPROBANTE_MANUAL_CUOTA3).setValue(fileUrlHermano); // AQ
                       
                       // Fallback para el pago total del principal si el hermano es de cuotas pero no se encontró slot
                       if ((cuota === "externo" || cuota === "mp_total") && metodoPagoHermano === "Pago en Cuotas") {
-                         hoja.getRange(filaHermano, COL_COMPROBANTE_MANUAL_CUOTA1).setValue(fileUrlHermano); // Pone en C1 por defecto
+                         hoja.getRange(filaHermano, COL_COMPROBANTE_MANUAL_CUOTA1).setValue(fileUrlHermano); // Pone en C1 (AO) por defecto
                       }
                     });
                 }
@@ -547,13 +551,13 @@ function subirComprobanteManual(
               .getRange(filaHermano, 1, 1, hoja.getLastColumn())
               .getValues()[0];
             const estadoAIHermano = String(
-              filaActualizada[COL_ESTADO_PAGO - 1] || ""
+              filaActualizada[COL_ESTADO_PAGO - 1] || "" // AJ
             );
             
-            const comp1h = filaActualizada[COL_COMPROBANTE_MANUAL_CUOTA1 - 1];
-            const comp2h = filaActualizada[COL_COMPROBANTE_MANUAL_CUOTA2 - 1];
-            const comp3h = filaActualizada[COL_COMPROBANTE_MANUAL_CUOTA3 - 1];
-            const compTotalh = filaActualizada[COL_COMPROBANTE_MANUAL_TOTAL_EXT - 1];
+            const comp1h = filaActualizada[COL_COMPROBANTE_MANUAL_CUOTA1 - 1]; // AO
+            const comp2h = filaActualizada[COL_COMPROBANTE_MANUAL_CUOTA2 - 1]; // AP
+            const comp3h = filaActualizada[COL_COMPROBANTE_MANUAL_CUOTA3 - 1]; // AQ
+            const compTotalh = filaActualizada[COL_COMPROBANTE_MANUAL_TOTAL_EXT - 1]; // AN
 
             const prevPagada1 =
               comp1h && String(comp1h).toString().trim() !== "";
@@ -615,7 +619,7 @@ function subirComprobanteManual(
 
             if (cantidadCuotasHermano === 0 && fileUrlHermano) {
                hoja
-                .getRange(filaHermano, COL_ESTADO_PAGO)
+                .getRange(filaHermano, COL_ESTADO_PAGO) // AJ
                 .setValue(esPagoFamiliar ? "Pago Total Familiar" : "Pagado");
               return { esTotal: true, nuevoEstado: esPagoFamiliar ? "Pago Total Familiar" : "Pagado" };
             }
@@ -636,7 +640,7 @@ function subirComprobanteManual(
                 nuevoEstadoH = esPagoFamiliar ? "Pago Total Familiar" : "Pagado";
             }
 
-            hoja.getRange(filaHermano, COL_ESTADO_PAGO).setValue(nuevoEstadoH);
+            hoja.getRange(filaHermano, COL_ESTADO_PAGO).setValue(nuevoEstadoH); // AJ
             Logger.log(
               `aplicarCambiosHermano FIN. fila:${filaHermano} nuevoEstado:${nuevoEstadoH} pagadasCount:${pagadasCountHermano} cantidadCuotas:${cantidadCuotasHermano}`
             );
@@ -719,13 +723,13 @@ function subirComprobanteManual(
         .getRange(fila, 1, 1, hoja.getLastColumn())
         .getValues()[0];
       const c_total_p =
-        filaActualizadaPrincipal[COL_COMPROBANTE_MANUAL_TOTAL_EXT - 1];
+        filaActualizadaPrincipal[COL_COMPROBANTE_MANUAL_TOTAL_EXT - 1]; // AN
       const c_c1_p =
-        filaActualizadaPrincipal[COL_COMPROBANTE_MANUAL_CUOTA1 - 1];
+        filaActualizadaPrincipal[COL_COMPROBANTE_MANUAL_CUOTA1 - 1]; // AO
       const c_c2_p =
-        filaActualizadaPrincipal[COL_COMPROBANTE_MANUAL_CUOTA2 - 1];
+        filaActualizadaPrincipal[COL_COMPROBANTE_MANUAL_CUOTA2 - 1]; // AP
       const c_c3_p =
-        filaActualizadaPrincipal[COL_COMPROBANTE_MANUAL_CUOTA3 - 1];
+        filaActualizadaPrincipal[COL_COMPROBANTE_MANUAL_CUOTA3 - 1]; // AQ
       const cuotasPagadasPorComp = [];
       if (c_c1_p && String(c_c1_p).trim() !== "")
         cuotasPagadasPorComp.push("mp_cuota_1");
@@ -734,7 +738,7 @@ function subirComprobanteManual(
       if (c_c3_p && String(c_c3_p).trim() !== "")
         cuotasPagadasPorComp.push("mp_cuota_3");
       let cantidadCuotasReg = parseInt(
-        filaActualizadaPrincipal[COL_CANTIDAD_CUOTAS - 1]
+        filaActualizadaPrincipal[COL_CANTIDAD_CUOTAS - 1] // AI
       );
       if (isNaN(cantidadCuotasReg) || cantidadCuotasReg < 1)
         cantidadCuotasReg = metodoPagoHoja === "Pago en Cuotas" ? 3 : 0;
