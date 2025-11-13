@@ -2,6 +2,7 @@
 // =========================================================
 // ARCHIVO: js2.html
 // Funciones Utilitarias, de DOM y de Caché (Estables)
+// (Versión final con modal de "Inscripción Completa")
 // =========================================================
 
 /**
@@ -454,5 +455,38 @@ function mostrarModalExpirado(mensaje) {
     }
   }, 1000);
   // --- (FIN DE CORRECCIÓN) ---
+}
+
+/**
+ * (NUEVO) Muestra un modal de felicitaciones y reinicia la página.
+ */
+function mostrarModalCompleto(titulo, mensaje) {
+  const modal = document.getElementById('completo-modal-backdrop');
+  if (!modal) return;
+  
+  document.getElementById('completo-modal-titulo').textContent = titulo;
+  document.getElementById('completo-modal-mensaje').textContent = mensaje;
+  modal.style.display = 'flex';
+  
+  let segundos = 5;
+  const countdownDisplay = document.getElementById('completo-modal-countdown');
+  countdownDisplay.textContent = `Redireccionando en ${segundos} segundos...`;
+
+  const interval = setInterval(() => {
+    segundos--;
+    
+    if (segundos <= 0) {
+      clearInterval(interval);
+      countdownDisplay.textContent = "Redireccionando...";
+      try {
+        limpiarCache(); // Limpia el caché
+        window.top.location.href = GLOBAL_APP_URL; // Redirecciona a la URL principal
+      } catch(e) {
+        countdownDisplay.textContent = "Error al redireccionar. Recargue manualmente.";
+      }
+    } else {
+      countdownDisplay.textContent = `Redireccionando en ${segundos} segundos...`;
+    }
+  }, 1000);
 }
 </script>

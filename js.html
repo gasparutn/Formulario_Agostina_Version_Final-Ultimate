@@ -3,6 +3,7 @@
   // =========================================================
   // ARCHIVO: js.html
   // Lógica Principal, Handlers del Servidor y Orquestación
+  // (Versión final con modal de "Inscripción Completa")
   // =========================================================
 
   const APP_URL = GLOBAL_APP_URL;
@@ -175,6 +176,7 @@
 
   /**
   * (MODIFICADO)
+  * - (NUEVO) Añadido un chequeo al inicio para mostrar el modal de "Completado".
   * - Corrige los mensajes para "Pago en Cuotas" pendiente.
   * - Utiliza 'response.cuotasPendientes' y 'response.cuotasPagadas'
   * - Deshabilita los checkboxes de cuotas ya pagadas.
@@ -182,6 +184,33 @@
   * - Muestra la casilla "familiar" SIEMPRE si `tieneHermanos` es true.
   */
   function handleValidationSuccess(response) {
+    
+    // =========================================================
+    // --- ¡INICIO DE LA MODIFICACIÓN (MODAL COMPLETO)! ---
+    // =========================================================
+    // Si el usuario valida y ya tiene todo (pagos Y aptitud),
+    // mostrar el modal de éxito y no hacer nada más.
+    if (response.status === 'REGISTRO_ENCONTRADO' && 
+        response.comprobantesCompletos === true && 
+        response.adeudaAptitud === false) {
+      
+      const nombreCompleto = (response.datos && response.datos.nombre) ? `${response.datos.nombre} ${response.datos.apellido}` : 'Usuario';
+      
+      // Ocultar el loader de validación por si acaso
+      document.getElementById('loader-validacion').style.display = 'none';
+      
+      // Llamar a la nueva función del modal (de js2.html)
+      mostrarModalCompleto(
+        `¡Felicidades, ${nombreCompleto}!`, 
+        'Has completado exitosamente todo el proceso de inscripción. Tu cupo está confirmado.'
+      );
+      
+      return; // Detener la ejecución de esta función
+    }
+    // =========================================================
+    // --- FIN DE LA MODIFICACIÓN ---
+    // =========================================================
+
     document.getElementById('btn-validar').disabled = false;
     document.getElementById('loader-validacion').style.display = 'none';
     const statusDiv = document.getElementById('status-validacion');
@@ -204,14 +233,7 @@
       // (Arregla "undefined undefined")
       const nombreCompleto = (response.datos && response.datos.nombre) ? `${response.datos.nombre} ${response.datos.apellido}` : 'Usuario';
 
-      // Si el usuario no adeuda absolutamente nada (según comprobantes y aptitud), mostrar mensaje de éxito agradable
-      const tieneCuotasPendientes = typeof response.cuotasPendientes === 'number' ? response.cuotasPendientes > 0 : true;
-      const comprobantesCompletosResp = !!response.comprobantesCompletos;
-      if (!tieneCuotasPendientes && comprobantesCompletosResp && response.adeudaAptitud !== true) {
-        // Mensaje final (reemplazado según petición del usuario)
-        html += `<div class="mensaje exito" style="margin-bottom:10px; text-align:justify;"><h3>¡Inscripción confirmada!</h3><p>¡Genial, ${nombreCompleto}! Su inscripción a la Colonia de Verano está confirmada y figura completa en nuestro sistema. Si necesita modificar algún dato de contacto, puede hacerlo validando nuevamente con el DNI del inscripto/a y accedará al formulario.</p></div>`;
-        // Nota: NO hacemos 'return' aquí para permitir que la sección de 'Editar' se agregue después
-      }
+      // (NOTA: El chequeo de 100% completo se movió al inicio de esta función)
 
       // Si está pagado (con los nuevos estados)
       if (response.message.includes('PAGADA') || response.message.includes('PAGADO') || response.message.includes('Pago Total') || response.message.includes('Pago total')) {
@@ -249,14 +271,11 @@
       }
 
       // Decidir si mostrar la sección de comprobantes basándonos en datos autoritativos
-      // - Para 'Pago en Cuotas' mostramos la sección solo si hay cuotas pendientes (según comprobantes)
-      // - Para otros métodos mostramos la sección si NO existen comprobantes que cubran lo adeudado
       const metodoPagoResp = response.metodoPago || '';
       const cuotasPendientesParaUI = (typeof response.cuotasPendientes === 'number') ? response.cuotasPendientes : (response.cantidadCuotasRegistrada || 0);
       const comprobantesCompletos = !!response.comprobantesCompletos;
       const debeMostrarComprobanteSection = (metodoPagoResp === 'Pago en Cuotas') ? (cuotasPendientesParaUI > 0) : (!comprobantesCompletos);
 
-      // Si NO está pagado (decisión basada en flags en lugar de texto en el mensaje)
       if (debeMostrarComprobanteSection) {
         html += `<div id="comprobante-manual-seccion" style="margin-top: 15px; border: 1px solid var(--color-principal); padding: 15px; border-radius: 5px;"><h3>Subir un comprobante (Cuota, Transferencia, etc.):</h3>`;
 
@@ -316,21 +335,16 @@
 
       } else { // Si está pagado Y no adeuda aptitud
         if (response.adeudaAptitud !== true) {
-          html += `<button type="button" id="btn-finalizar-upload" class="btn-final-volver">Volver al Inicio</button>`;
+          // (Este botón ya no se muestra, porque el modal de "Completado" aparece en su lugar)
+          // html += `<button type="button" id="btn-finalizar-upload" class="btn-final-volver">Volver al Inicio</button>`;
         }
       }
 
       // (Sección Editar)
-     
-      // --- (INICIO DE MODIFICACIÓN: Se añade <div id="edit-timer"></div> debajo del h3) ---
-    
     html += `<div id="editar-info-seccion" style="margin-top: 20px;"><button type="button" id="btn-mostrar-editar" class="btn-editar">Editar Datos de Contacto / Autorizados</button><div id="editar-form-container" style="display: none; border: 2px dashed #007bff; padding: 15px; margin-top: 10px; background: #f8f9fa;">
       <h3>Editando Datos</h3>
       <div id="edit-timer"></div>
       <p>Modifique solo los campos necesarios. Los campos de DNI e Email del inscripto no se pueden cambiar.</p><label for="edit-dni">DNI Inscripto (Bloqueado)</label><input type="text" id="edit-dni" readonly class="campo-bloqueado"><label for="edit-email">Email (Bloqueado)</label><input type="email" id="edit-email" readonly class="campo-bloqueado"><label for="edit-adultoResponsable1">Adulto Responsable 1</label><input type="text" id="edit-adultoResponsable1" class="form-cache"><label for="edit-dniResponsable1">DNI Responsable 1</label><input type="tel" id="edit-dniResponsable1" class="form-cache" maxlength="8" pattern="[0-9]{8}"><label for="edit-telResp1">Tel. Responsable 1 (Ej: (261) 5123456)</label><input type="tel" id="edit-telResp1" class="form-cache"><label for="edit-adultoResponsable2">Adulto Responsable 2 (Opcional)</label><input type="text" id="edit-adultoResponsable2" class="form-cache"><label for="edit-telResp2">Tel. Responsable 2 (Opcional)</label><input type="tel" id="edit-telResp2" class="form-cache"><label>Personas Autorizadas (Edite la lista completa)</label><div id="edit-autorizados-container"></div><button type="button" id="btn-edit-add-autorizado" class="btn-dinamico" style="width: auto;">+ Agregar Autorizado</button><label for="edit-aptitud-upload" style="margin-top: 15px;">Reemplazar Certificado de Aptitud (Opcional)</label><p style="font-size: 0.9em; margin-bottom: 10px;">(Solo seleccione un archivo si desea reemplazar el existente o subir uno nuevo).</p><input type="file" id="edit-aptitud-upload" accept="image/jpeg, image/png, application/pdf"><label for="edit-aptitud-upload" class="file-input-label">Seleccionar Nuevo Certificado</label><span id="edit-aptitud-name" class="file-name">Ningún archivo seleccionado</span><div class="loader-archivo" id="loader-edit-aptitud"></div><input type="hidden" id="edit-urlCertificadoAptitud"><div style="display: flex; gap: 10px; margin-top: 20px;"><button type="button" id="btn-guardar-cambios" class="btn-guardar" style="width: 50%;">Guardar Cambios</button><button type="button" id="btn-cancelar-edicion" class="btn-cancelar" style="width: 50%;">Cancelar</button></div></div></div>`;
-
-      // ... (código sin cambios) ...
-      // --- (FIN DE MODIFICACIÓN) ---
 
       statusDiv.innerHTML = html;
       const tokenContainer = document.createElement('div');
@@ -344,7 +358,7 @@
         document.getElementById('btn-submit-aptitud-manual').addEventListener('click', submitAptitudManual);
       }
 
-      if (!response.message.includes('PAGADO') && !response.message.includes('PAGADA') && !response.message.includes('Pago Total') && !response.message.includes('Pago total')) {
+      if (debeMostrarComprobanteSection) {
         const cuotaSelectorContainer = document.getElementById('cuota-selector-container');
         const datosExternoContainer = document.getElementById('datos-externo-container');
         const uploadFileContainer = document.getElementById('upload-file-container');
@@ -360,21 +374,15 @@
             uploadFileContainer.style.display = tipo ? 'block' : 'none';
             cuotaSelectorContainer.style.display = tipo === 'mp_cuotas_group' ? 'block' : 'none';
 
-            // --- (INICIO CORRECCIÓN PAGO FAMILIAR) ---
-            // La casilla familiar ahora se muestra si tiene hermanos (siempre visible en esta sección)
-            // Se oculta/muestra junto con `datosExternoContainer`
             if (pagoFamiliarContainer) {
               pagoFamiliarContainer.style.display = response.tieneHermanos ? 'flex' : 'none';
             }
-            // --- (FIN CORRECCIÓN PAGO FAMILIAR) ---
 
             if (fileInputComprobante) fileInputComprobante.value = '';
             if (document.getElementById('comprobante-manual-name')) document.getElementById('comprobante-manual-name').textContent = 'Ningún archivo seleccionado';
             if (btnClearComprobante) btnClearComprobante.style.display = 'none';
           });
         }
-
-        // (Quitamos el listener del sub-selector de cuotas, ya no es necesario)
 
         if (fileInputComprobante) {
           fileInputComprobante.addEventListener('change', function () {
@@ -465,7 +473,7 @@
         btnFinalizar.addEventListener('click', () => { window.top.location.href = APP_URL; });
       }
 
-      document.getElementById('btn-mostrar-editar').addEventListener('click', solicitarTokenParaEditar); // (CORRECCIÓN) Llamar a la función del token
+      document.getElementById('btn-mostrar-editar').addEventListener('click', solicitarTokenParaEditar);
       document.getElementById('btn-cancelar-edicion').addEventListener('click', ocultarFormEdicion);
       document.getElementById('btn-edit-add-autorizado').addEventListener('click', () => addAutorizadoCamposEdicion());
       document.getElementById('edit-aptitud-upload').addEventListener('change', manejarSubidaAptitudEdicion);
@@ -480,8 +488,6 @@
     document.getElementById('loader-validacion').style.display = 'none';
     document.getElementById('status-validacion').innerHTML = `<div class="mensaje error"><strong>Error en el Servidor:</strong> ${error.message}</div>`;
   }
-
-  // ... (El resto de las funciones de js.html siguen aquí) ...
 
   /**
    * (NUEVO) Inicia el flujo de validación por token al hacer clic en "Editar Datos".
@@ -539,10 +545,10 @@
       tokenFlowContainer.innerHTML = ''; // Limpiar el loader
       tokenFlowContainer.appendChild(tokenSeccionClone);
       tokenSeccionClone.style.display = 'block';
-      document.getElementById('status-token-envio').innerHTML = `<div class="mensaje exito">${response.message}</div>`;
+      tokenSeccionClone.querySelector('#status-token-envio').innerHTML = `<div class="mensaje exito">${response.message}</div>`;
 
       // Lógica de eventos para el CLON
-      const tokenInputs = document.querySelectorAll('.token-input');
+      const tokenInputs = tokenSeccionClone.querySelectorAll('.token-input');
       tokenInputs.forEach((input, index) => {
         input.addEventListener('keyup', (e) => {
           if (e.key >= 0 && e.key <= 9 && index < tokenInputs.length - 1) {
@@ -559,7 +565,7 @@
             pasteData.split('').forEach((char, i) => {
               if (i < tokenInputs.length) { tokenInputs[i].value = char; }
             });
-            document.getElementById('btn-validar-token').focus();
+            tokenSeccionClone.querySelector('#btn-validar-token').focus();
           }
         });
       });
@@ -569,7 +575,7 @@
         tokenInputs.forEach(input => token += input.value);
 
         if (token.length !== 6) {
-          document.getElementById('status-token-validacion').innerHTML = `<div class="mensaje error">Por favor, ingrese los 6 dígitos del código.</div>`;
+          tokenSeccionClone.querySelector('#status-token-validacion').innerHTML = `<div class="mensaje error">Por favor, ingrese los 6 dígitos del código.</div>`;
           return;
         }
 
@@ -583,9 +589,14 @@
           .withFailureHandler(handleValidationFailure)
           .validarToken(dni, token);
       });
-      // Fin de la restauración de eventos.
+      
+      // (NUEVO) Listener para el botón "Volver"
+      tokenSeccionClone.querySelector('#btn-volver-validacion').addEventListener('click', function() {
+         tokenFlowContainer.innerHTML = ''; // Limpiar la sección del token
+         if (window.tokenTimerInterval) clearInterval(window.tokenTimerInterval);
+      });
 
-      iniciarTemporizadorToken(); // (CORRECCIÓN) Se restaura la llamada al temporizador.
+      iniciarTemporizadorToken();
       tokenSeccionClone.querySelector('.token-input').focus();
     } else {
       tokenFlowContainer.innerHTML = `<div class="mensaje error">${response.message}</div>`;
@@ -596,7 +607,7 @@
    * (NUEVO) Se ejecuta cuando el token ingresado es validado.
    * Si es correcto, muestra el formulario de edición.
    */
-  function onTokenValidado(response) { // (CORRECCIÓN) Implementación completa de la función.
+  function onTokenValidado(response) {
     const tokenClone = document.getElementById('token-seccion-clonada');
     if (tokenClone) {
       tokenClone.querySelector('#loader-token').style.display = 'none';
@@ -609,7 +620,8 @@
         clearInterval(window.tokenTimerInterval);
       }
      
-      if (tokenClone) tokenClone.style.display = 'none';
+     // Ocultar el contenedor de flujo de token
+     document.getElementById('token-flow-container').innerHTML = '';
 
       mostrarFormEdicion(); // Llama a la función que prepara y muestra el form de edición
     } else {
@@ -903,9 +915,40 @@
         .withSuccessHandler(function (response) {
           loader.style.display = 'none';
           if (response.status === 'OK') {
-            document.getElementById('aptitud-manual-seccion').innerHTML = `<div class="mensaje exito">${response.message}</div>`;
-            const btnFinalizar = document.getElementById('btn-finalizar-upload');
-            if (btnFinalizar) btnFinalizar.disabled = false;
+            
+            // =========================================================
+            // --- ¡INICIO DE LA MODIFICACIÓN (RE-VALIDACIÓN)! ---
+            // =========================================================
+            // En lugar de solo mostrar un mensaje, forzamos una
+            // re-validación para que handleValidationSuccess
+            // pueda verificar si el formulario está 100% completo.
+            
+            const statusDiv = document.getElementById('status-validacion');
+            // Limpiar mensajes antiguos (excepto el de aptitud que se va a recargar)
+            statusDiv.querySelectorAll('.mensaje').forEach(el => {
+              if (el.closest && !el.closest('#aptitud-manual-seccion')) {
+                el.remove();
+              } else if (!el.closest) {
+                el.remove();
+              }
+            });
+
+            statusDiv.insertAdjacentHTML('afterbegin', `<div class="mensaje exito" style="margin-bottom:10px;">${response.message}</div>`);
+
+            // Disparar la re-validación
+            const dni = document.getElementById('dni-input').value;
+            const tipo = document.getElementById('tipoInscripto').value;
+            document.getElementById('loader-validacion').style.display = 'block';
+            document.getElementById('loader-validacion').querySelector('p').textContent = 'Actualizando estado...';
+
+            google.script.run
+              .withSuccessHandler(handleValidationSuccess) // Llama al handler principal
+              .withFailureHandler(handleValidationFailure)
+              .validarAcceso(dni, tipo);
+            // =========================================================
+            // --- FIN DE LA MODIFICACIÓN ---
+            // =========================================================
+
           } else {
             alert("Error al subir: " + response.message);
             btn.disabled = false;
@@ -949,7 +992,9 @@
     const statusDiv = document.getElementById('status-validacion');
     statusDiv.querySelectorAll('.mensaje').forEach(el => {
       // No borrar el mensaje de 'adeuda aptitud'
-      if (!el.closest('#aptitud-manual-seccion')) {
+      if (el.closest && !el.closest('#aptitud-manual-seccion')) {
+        el.remove();
+      } else if (!el.closest) {
         el.remove();
       }
     });
@@ -1021,7 +1066,9 @@
       // Limpiar mensajes antiguos antes de re-validar
       statusDiv.querySelectorAll('.mensaje').forEach(el => {
         // No borrar el mensaje de 'adeuda aptitud'
-        if (!el.closest('#aptitud-manual-seccion')) {
+        if (el.closest && !el.closest('#aptitud-manual-seccion')) {
+          el.remove();
+        } else if (!el.closest) {
           el.remove();
         }
       });
@@ -1189,7 +1236,7 @@
     document.getElementById('submit-button').disabled = true;
 
     loader.textContent = 'Preparando archivo (comprimiendo si es imagen)...';
-    comprimirYLeerArchivo(file).then(fileData => {
+    comprimirYLeerArchivo(file).then(fileData => { // Llama a js2.html
       loader.textContent = 'Subiendo archivo...';
       google.script.run
         .withSuccessHandler(function (response) {

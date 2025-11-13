@@ -2,66 +2,86 @@
 // Las constantes (COL_EMAIL, COL_ESTADO_PAGO, etc.) se leen
 // automáticamente desde el archivo 'Constantes.gs'.
 //
-// (MODIFICADO) TODA LA LÓGICA DE MERCADO PAGO HA SIDO ELIMINADA.
+// (MODIFICADO) Lógica de precios "Híbrida" (Definitiva)
+// 1. El principal obtiene el precio del último hermano (ej: si son 2, obtiene el precio de "Registro 2").
+// 2. Los hermanos se pre-registran sin precio.
+// 3. Los hermanos, al completar, obtienen su precio escalonado (ej: "Registro 2", "Registro 3")
+//    basado en SUS PROPIAS opciones de jornada/socio.
 // =========================================================
 
 /**
-* (PASO 1 - CORREGIDO)
-* (Punto 10) Añadida lógica para "Transferencia"
-* (Punto 28) Lógica de "Pago en Cuotas" ajustada para "Pago en 3 Cuotas"
-* (FIX #3) Añadida la lógica de registro de hermanos que se había perdido.
-* (MODIFICADO) Se pasa el 'tipo' de hermano a 'registrarDatos'.
+* (PASO 1 - MODIFICADO)
+* Lógica de precio "Híbrida" (Definitiva)
 */
 function paso1_registrarRegistro(datos) {
   Logger.log("PASO 1 INICIADO. Datos recibidos: " + JSON.stringify(datos));
   try {
-    if (!datos.urlFotoCarnet && !datos.esHermanoCompletando) { // (Punto 6) Los hermanos no suben foto en el registro inicial
+    if (!datos.urlFotoCarnet && !datos.esHermanoCompletando) { 
       Logger.log("Error: El formulario se envió sin la URL de la Foto Carnet.");
       return { status: 'ERROR', message: 'Falta la Foto Carnet. Por favor, asegúrese de que el archivo se haya subido correctamente.' };
     }
 
-    // (Punto 10) Nuevos estados de pago
+    // =========================================================
+    // --- LÓGICA DE PRECIO HÍBRIDA (PRINCIPAL) ---
+    // =========================================================
+    const hojaConfig = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(NOMBRE_HOJA_CONFIG);
+    
+    // 1. Contar el total de hijos en esta transacción (Principal + lista de hermanos)
+    const totalHijos = 1 + (datos.hermanos ? datos.hermanos.length : 0);
+    
+    // 2. Determinar el índice de precio para el grupo (Si son 2 hijos, usamos índice 1. Si son 3+, usamos 2)
+    const indicePrecioAplicar = Math.min(totalHijos - 1, 2);
+    
+    // 3. Obtener esa configuración de precio (ej: "Registro 2") usando las opciones de H1
+    const infoPrecioPrincipal = obtenerPrecioYConfiguracion(datos, hojaConfig, indicePrecioAplicar);
+    
+    Logger.log(`Total Hijos: ${totalHijos}. Índice de precio aplicado: ${indicePrecioAplicar}. Precio H1: ${infoPrecioPrincipal.precio}`);
+
+    // 4. Aplicar ese precio al Inscripto Principal (datos)
+    datos.precio = infoPrecioPrincipal.precio;
+    datos.montoAPagar = infoPrecioPrincipal.montoAPagar;
+    datos.cantidadCuotas = infoPrecioPrincipal.cantidadCuotas;
+    // =========================================================
+
+    // (Punto 10) Nuevos estados de pago (solo para el principal)
     if (datos.metodoPago === 'Pago Efectivo (Adm del Club)') {
       datos.estadoPago = "Pendiente (Efectivo)";
     } else if (datos.metodoPago === 'Transferencia') {
-      datos.estadoPago = "Pendiente (Transferencia)"; // NUEVO
+      datos.estadoPago = "Pendiente (Transferencia)";
     } else if (datos.metodoPago === 'Pago en Cuotas') {
-      datos.estadoPago = `Pendiente (${datos.cantidadCuotas} Cuotas)`; // (datos.cantidadCuotas será 3)
+      datos.estadoPago = `Pendiente (${datos.cantidadCuotas} Cuotas)`;
     } else { 
-      // Fallback por si algún método de MP quedó cacheado (ya no debería pasar)
       datos.estadoPago = "Pendiente (Transferencia)";
     }
 
     // (Punto 12) Si es un hermano completando, llamamos a una función diferente
     if (datos.esHermanoCompletando === true) {
-      // (MODIFICADO) Se pasa 'datos' directamente
-      const respuestaUpdate = actualizarDatosHermano(datos);
-      // Asignar datos de nombre/apellido a la respuesta para el 'paso2'
+      // Esta función (actualizarDatosHermano) tiene la lógica
+      // para calcular el precio escalonado (ej: índice 1 o 2).
+      const respuestaUpdate = actualizarDatosHermano(datos); 
       respuestaUpdate.datos = datos; 
       return respuestaUpdate;
     } else {
       
-      // --- INICIO DE LA CORRECCIÓN (FIX #3) ---
       // 1. Registrar al inscripto principal
-      // (registrarDatos() vive en codigo.gs y ya calcula el grupo)
       const respuestaRegistro = registrarDatos(datos); 
       
       if (respuestaRegistro.status !== 'OK_REGISTRO') {
         Logger.log("Fallo el registro principal: " + respuestaRegistro.message);
-        return respuestaRegistro; // Si falló el principal, detenerse
+        return respuestaRegistro;
       }
 
       // 2. Si hay hermanos, registrarlos
       const hermanosRegistrados = [];
       if (datos.hermanos && datos.hermanos.length > 0) {
         const idVinculo = `FAM_${respuestaRegistro.numeroDeTurno}`;
-        respuestaRegistro.datos.vinculoPrincipal = idVinculo; // Para el 'paso2'
+        respuestaRegistro.datos.vinculoPrincipal = idVinculo;
         
         try {
           // Actualizar la fila del principal con el ID de vínculo
           const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
           const hojaRegistro = ss.getSheetByName(NOMBRE_HOJA_REGISTRO);
-          const dniPrincipalLimpio = limpiarDNI(datos.dni); // (Usamos limpiarDNI de Código.js)
+          const dniPrincipalLimpio = limpiarDNI(datos.dni); 
           
           if (hojaRegistro.getLastRow() > 1) {
             const rangoDni = hojaRegistro.getRange(2, COL_DNI_INSCRIPTO, hojaRegistro.getLastRow() - 1, 1);
@@ -69,9 +89,6 @@ function paso1_registrarRegistro(datos) {
             
             if (celdaEncontrada) {
               hojaRegistro.getRange(celdaEncontrada.getRow(), COL_VINCULO_PRINCIPAL).setValue(idVinculo);
-              Logger.log(`ID Vínculo ${idVinculo} seteado en fila ${celdaEncontrada.getRow()} para DNI ${dniPrincipalLimpio}`);
-            } else {
-               Logger.log(`No se encontró la fila para el DNI ${dniPrincipalLimpio} para setear el ID de vínculo.`);
             }
           }
         } catch (e) {
@@ -79,10 +96,15 @@ function paso1_registrarRegistro(datos) {
         }
 
         // Registrar a cada hermano
-        datos.hermanos.forEach(hermano => {
+        datos.hermanos.forEach((hermano, i) => {
           try {
-            // (CORRECCIÓN) Determinar el tipo de inscripción REAL del hermano.
-            const tipoInscripcionHermano = hermano.tipo || 'nuevo'; // 'nuevo', 'anterior', 'preventa'
+            // =========================================================
+            // --- LÓGICA DE PRECIO (HERMANOS) ---
+            // =========================================================
+            // Los hermanos se pre-registran SIN precio, jornada o método de pago.
+            // Estos se calcularán cuando ellos completen sus datos.
+            
+            const tipoInscripcionHermano = hermano.tipo || 'nuevo';
 
             const datosHermano = {
               nombre: hermano.nombre,
@@ -91,37 +113,34 @@ function paso1_registrarRegistro(datos) {
               fechaNacimiento: hermano.fechaNac,
               obraSocial: hermano.obraSocial,
               colegioJardin: hermano.colegio,
-              tipoInscripto: 'hermano/a', // Identificador genérico para la lógica de 'completar datos'
-              tipoInscripcionOriginal: tipoInscripcionHermano, // (NUEVO) Guardamos el tipo real
+              tipoInscripto: 'hermano/a',
+              tipoInscripcionOriginal: tipoInscripcionHermano,
               esPreventa: tipoInscripcionHermano === 'preventa', 
               email: datos.email, 
               adultoResponsable1: datos.adultoResponsable1,
               dniResponsable1: datos.dniResponsable1,
               telAreaResp1: datos.telAreaResp1, 
               telNumResp1: datos.telNumResp1,
-              estadoPago: "Pendiente (Hermano/a)",
-              metodoPago: "", 
-              jornada: "", 
-              esSocio: "", 
-              vinculoPrincipal: idVinculo 
+              // Los datos de pago y precio se dejan VACÍOS
+              metodoPago: "",
+              jornada: "",
+              esSocio: "",
+              vinculoPrincipal: idVinculo,
+              precio: 0,
+              montoAPagar: 0,
+              cantidadCuotas: 0,
+              estadoPago: "Pendiente (Hermano/a)", // Estado clave
             };
+            // =========================================================
 
-            // Llamar a registrarDatos para el hermano (esto también calculará el grupo)
             const respHermano = registrarDatos(datosHermano);
             if (respHermano.status === 'OK_REGISTRO') {
-              
-              // =========================================================
-              // --- ¡¡AQUÍ ESTÁ LA CORRECCIÓN (Error 2b)!! ---
-              // (Se pasa el tipo real para la redirección)
-              // =========================================================
               hermanosRegistrados.push({
                 nombre: hermano.nombre,
                 apellido: hermano.apellido,
                 dni: hermano.dni,
-                tipo: tipoInscripcionHermano // <-- CORREGIDO (antes era "hermano/a")
+                tipo: tipoInscripcionHermano 
               });
-              // =========================================================
-
             } else {
                Logger.log(`Fallo al pre-registrar hermano ${hermano.dni}: ${respHermano.message}`);
             }
@@ -134,7 +153,6 @@ function paso1_registrarRegistro(datos) {
       respuestaRegistro.hermanosRegistrados = hermanosRegistrados;
       Logger.log("PASO 1 FINALIZADO. Respuesta: " + JSON.stringify(respuestaRegistro));
       return respuestaRegistro;
-      // --- FIN DE LA CORRECCIÓN (FIX #3) ---
     }
 
   } catch (e) {
@@ -143,48 +161,12 @@ function paso1_registrarRegistro(datos) {
   }
 }
 
-// =========================================================
-// (NUEVA FUNCIÓN HELPER para solucionar error de 'hermano')
-// =========================================================
-/**
- * Obtiene el precio y el monto a pagar desde la hoja de Config.
- */
-function obtenerPrecioDesdeConfig(metodoPago, cantidadCuotasStr, hojaConfig) {
-  let precio = 0;
-  let montoAPagar = 0;
-  try {
-    const precioCuota = hojaConfig.getRange("B20").getValue();
-    const precioTotal = hojaConfig.getRange("B14").getValue();
-
-    if (metodoPago === 'Pago en Cuotas') {
-      const numCuotas = parseInt(cantidadCuotasStr) || 3;
-      precio = precioCuota * numCuotas;
-      montoAPagar = precio;
-    } else if (metodoPago === 'Pago Efectivo (Adm del Club)' || metodoPago === 'Transferencia') {
-      precio = precioTotal;
-      montoAPagar = precio;
-    }
-
-    if (precio === 0 && precioTotal > 0) {
-      precio = precioTotal;
-    }
-    if (montoAPagar === 0 && precio > 0) {
-       montoAPagar = precio;
-    }
-
-    return { precio, montoAPagar };
-
-  } catch (e) {
-    Logger.log("Error en obtenerPrecioDesdeConfig: " + e.message);
-    return { precio: 0, montoAPagar: 0 };
-  }
-}
-
 
 /**
 * (MODIFICADO)
-* - (FIX #1) Corregida la escritura de HYPERLINK para Foto Carnet y Aptitud.
-* - (NUEVO) Añadida la lógica de cálculo de grupo y color al actualizar.
+* - Lógica de precio "escalonada" (revertida).
+* - Calcula el precio para ESTE hermano basado en su índice (1, 2, etc.).
+* - YA NO actualiza los precios de otros miembros de la familia.
 */
 function actualizarDatosHermano(datos) {
   const lock = LockService.getScriptLock();
@@ -205,15 +187,39 @@ function actualizarDatosHermano(datos) {
       return { status: 'ERROR', message: 'No se encontró el registro del hermano para actualizar.' };
     }
 
-    const fila = celdaEncontrada.getRow();
+    const fila = celdaEncontrada.getRow(); // <- Esta es la fila de ESTE hermano
 
-    // --- CÁLCULO DE PRECIOS ---
-    const { precio, montoAPagar } = obtenerPrecioDesdeConfig(datos.metodoPago, datos.cantidadCuotas, hojaConfig);
+    // =========================================================
+    // --- LÓGICA DE PRECIO ESCALONADO (HERMANO COMPLETANDO) ---
+    // =========================================================
+    
+    // 1. Encontrar el índice de ESTE hermano (0, 1, 2...)
+    // (Esta función vive en precios.gs)
+    const indiceHijo = _obtenerIndiceHijo(hojaRegistro, fila);
+    
+    // 2. Calcular el precio usando los DATOS DE ESTE HERMANO y su ÍNDICE
+    const infoPrecio = obtenerPrecioYConfiguracion(datos, hojaConfig, indiceHijo);
+    
+    const precio = infoPrecio.precio;
+    const montoAPagar = infoPrecio.montoAPagar;
+    
+    // 3. Sobrescribir cantidadCuotas en el objeto 'datos'
+    datos.cantidadCuotas = infoPrecio.cantidadCuotas;
+    
+    // 4. Actualizar el estado de pago si es cuotas
+    if (datos.metodoPago === 'Pago en Cuotas') {
+      datos.estadoPago = `Pendiente (${datos.cantidadCuotas} Cuotas)`;
+    } else if (datos.metodoPago === 'Pago Efectivo (Adm del Club)') {
+      datos.estadoPago = "Pendiente (Efectivo)";
+    } else if (datos.metodoPago === 'Transferencia') {
+      datos.estadoPago = "Pendiente (Transferencia)";
+    }
+    // =========================================================
+
 
     const telResp1 = `(${datos.telAreaResp1}) ${datos.telNumResp1}`;
     const telResp2 = (datos.telAreaResp2 && datos.telNumResp2) ? `(${datos.telAreaResp2}) ${datos.telNumResp2}` : '';
 
-    // --- (MODIFICACIÓN) ---
     const esPreventa = (datos.esPreventa === true); 
     let marcaNE = "";
     if (datos.jornada === 'Jornada Normal extendida') {
@@ -221,10 +227,9 @@ function actualizarDatosHermano(datos) {
     } else { 
       marcaNE = esPreventa ? "Normal (Pre-Venta)" : "Normal";
     }
-    // --- (FIN MODIFICACIÓN) ---
-
 
     // (Punto 6, 27) Actualizar la fila del hermano con los datos completos
+    // ESTO SOLO AFECTA A LA 'fila' DE ESTE HERMANO
     hojaRegistro.getRange(fila, COL_MARCA_N_E_A).setValue(marcaNE);
     hojaRegistro.getRange(fila, COL_EMAIL).setValue(datos.email);
     hojaRegistro.getRange(fila, COL_OBRA_SOCIAL).setValue(datos.obraSocial);
@@ -242,7 +247,7 @@ function actualizarDatosHermano(datos) {
     hojaRegistro.getRange(fila, COL_ES_ALERGICO).setValue(datos.esAlergico);
     hojaRegistro.getRange(fila, COL_ESPECIFIQUE_ALERGIA).setValue(datos.especifiqueAlergia);
 
-    // --- INICIO DE LA CORRECCIÓN (FIX #1) ---
+    // Fotos
     const urlAptitud = datos.urlCertificadoAptitud || '';
     if (urlAptitud) {
       const valAptitud = String(urlAptitud).startsWith('=HYPERLINK') ? urlAptitud : `=HYPERLINK("${urlAptitud}"; "Aptitud_${dniBuscado}")`;
@@ -250,7 +255,6 @@ function actualizarDatosHermano(datos) {
     } else {
       hojaRegistro.getRange(fila, COL_APTITUD_FISICA).setValue('');
     }
-    
     const urlFoto = datos.urlFotoCarnet || '';
     if (urlFoto) {
       const valFoto = String(urlFoto).startsWith('=HYPERLINK') ? urlFoto : `=HYPERLINK("${urlFoto}"; "Foto_${dniBuscado}")`;
@@ -258,26 +262,23 @@ function actualizarDatosHermano(datos) {
     } else {
       hojaRegistro.getRange(fila, COL_FOTO_CARNET).setValue('');
     }
-    // --- FIN DE LA CORRECCIÓN (FIX #1) ---
 
+    // Actualizar datos de PAGO (Jornada, Socio, Precio) SÓLO EN ESTA FILA
     hojaRegistro.getRange(fila, COL_JORNADA).setValue(datos.jornada);
     hojaRegistro.getRange(fila, COL_SOCIO).setValue(datos.esSocio); 
     hojaRegistro.getRange(fila, COL_METODO_PAGO).setValue(datos.metodoPago);
-    hojaRegistro.getRange(fila, COL_PRECIO).setValue(precio);
-    hojaRegistro.getRange(fila, COL_CANTIDAD_CUOTAS).setValue(parseInt(datos.cantidadCuotas) || 0); 
+    hojaRegistro.getRange(fila, COL_PRECIO).setValue(precio); // <- Asigna el precio escalonado
+    hojaRegistro.getRange(fila, COL_CANTIDAD_CUOTAS).setValue(parseInt(datos.cantidadCuotas) || 0);
     hojaRegistro.getRange(fila, COL_ESTADO_PAGO).setValue(datos.estadoPago);
     hojaRegistro.getRange(fila, COL_MONTO_A_PAGAR).setValue(montoAPagar);
     
-    // --- (INICIO DE MODIFICACIÓN - CÁLCULO DE GRUPO) ---
-    // (determinarGrupoPorFecha y aplicarColorGrupo están en Código.js)
+    // --- Cálculo de Grupo y Color ---
     const fechaNacHermano = hojaRegistro.getRange(fila, COL_FECHA_NACIMIENTO_REGISTRO).getValue();
     
-    // (Corrección) Asegurarse de que la fecha sea un string 'yyyy-MM-dd' para la función
     let fechaNacHermanoStr = "";
     if (fechaNacHermano instanceof Date) {
         fechaNacHermanoStr = Utilities.formatDate(fechaNacHermano, ss.getSpreadsheetTimeZone(), "yyyy-MM-dd");
     } else if (fechaNacHermano) {
-        // Intentar parsear si es un string (aunque getValue() suele devolver Date)
         try {
             fechaNacHermanoStr = Utilities.formatDate(new Date(fechaNacHermano), ss.getSpreadsheetTimeZone(), "yyyy-MM-dd");
         } catch(e) {
@@ -290,7 +291,6 @@ function actualizarDatosHermano(datos) {
         hojaRegistro.getRange(fila, COL_GRUPOS).setValue(grupoAsignado);
         aplicarColorGrupo(hojaRegistro, fila, grupoAsignado, hojaConfig);
     }
-    // --- (FIN DE MODIFICACIÓN) ---
 
     SpreadsheetApp.flush();
 
@@ -309,7 +309,7 @@ function actualizarDatosHermano(datos) {
 
 
 /**
-* (PASO 2 - MODIFICADO)
+* (PASO 2 - Sin cambios)
 */
 function paso2_procesarPostRegistro(datos, numeroDeTurno, hermanosRegistrados = null) {
   try {
