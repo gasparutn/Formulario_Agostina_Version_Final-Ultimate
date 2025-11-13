@@ -3,6 +3,7 @@
 // ARCHIVO: js2.html
 // Funciones Utilitarias, de DOM y de Caché (Estables)
 // (Versión final con modal de "Inscripción Completa")
+// (MODIFICADO) Añadido "debounce" para el guardado en caché
 // =========================================================
 
 /**
@@ -146,11 +147,30 @@ function toggleTransferenciaInfo() {
 }
 
 /**
+ * (NUEVO) Muestra/oculta el submenú de pago de cuotas (Efectivo/Transferencia).
+ */
+function toggleSubMetodoCuotas() {
+  const metodoPago = document.getElementById('metodoPago').value;
+  const container = document.getElementById('sub-metodo-cuotas-container');
+  const inputSelect = document.getElementById('subMetodoCuotas');
+  
+  if (metodoPago === 'Pago en Cuotas') {
+    container.style.display = 'block';
+    inputSelect.required = true;
+  } else {
+    container.style.display = 'none';
+    inputSelect.required = false;
+    inputSelect.value = ''; // Limpiar selección si se cambia a otro método
+  }
+}
+
+
+/**
  * Función genérica para remover una fila dinámica (padre del botón).
  */
 function removerFila(boton) {
   boton.parentElement.remove();
-  guardarFormEnCache();
+  triggerGuardarFormEnCache(); // (MODIFICADO) Llama al trigger en lugar de al guardado directo
 }
 
 /**
@@ -256,6 +276,36 @@ function addHermanoCampos(data = {}, tipo = 'nuevo') {
     calcularYMostrarEdad(fechaNac, document.getElementById(uniqueId));
   }
 }
+
+// =========================================================
+// --- ¡¡INICIO DE LA MODIFICACIÓN (ANTI-LAG)!! ---
+// =========================================================
+
+// (NUEVO) Variable global para el temporizador de caché
+let cacheTimer = null;
+
+/**
+ * (NUEVO) Función "debounce" para retrasar el guardado en caché.
+ * Esto evita el "lag" al completar cada campo.
+ */
+function triggerGuardarFormEnCache() {
+  // Si ya hay un guardado programado, cancelarlo
+  if (cacheTimer) {
+    clearTimeout(cacheTimer);
+  }
+
+  // Programar un nuevo guardado para dentro de 750ms (0.75 segundos)
+  cacheTimer = setTimeout(() => {
+    guardarFormEnCache();
+    cacheTimer = null; // Limpiar el timer
+    // console.log("Formulario guardado en caché."); // (Opcional: para depuración)
+  }, 750);
+}
+
+// =========================================================
+// --- ¡¡FIN DE LA MODIFICACIÓN (ANTI-LAG)!! ---
+// =========================================================
+
 
 /**
  * Guarda los datos del formulario en localStorage.
@@ -371,9 +421,10 @@ function cargarFormDesdeCache() {
       });
     }
 
-    calcularYMostrarEdad();
+   calcularYMostrarEdad();
     toggleTransferenciaInfo();
     toggleCuotasInfo(); 
+    toggleSubMetodoCuotas(); // <-- AÑADIDO
 
   } catch (e) {
     console.warn("No se pudo cargar el caché del formulario: ", e);
@@ -459,6 +510,7 @@ function mostrarModalExpirado(mensaje) {
 
 /**
  * (NUEVO) Muestra un modal de felicitaciones y reinicia la página.
+ * (CORREGIDO) Ahora muestra un botón manual en lugar de redirección automática.
  */
 function mostrarModalCompleto(titulo, mensaje) {
   const modal = document.getElementById('completo-modal-backdrop');
@@ -470,20 +522,34 @@ function mostrarModalCompleto(titulo, mensaje) {
   
   let segundos = 5;
   const countdownDisplay = document.getElementById('completo-modal-countdown');
+  const volverButton = document.getElementById('btn-modal-completo-volver'); // <-- 1. Obtener botón
+
+  // 2. Ocultar botón y asignar acción de clic
+  volverButton.style.display = 'none';
+  volverButton.onclick = function() {
+    try {
+      this.disabled = true;
+      this.textContent = "Cargando...";
+      limpiarCache(); // Limpia el caché
+      window.top.location.href = GLOBAL_APP_URL; // Redirecciona a la URL principal
+    } catch(e) {
+      console.error("Error en click de volver (completo):", e);
+      countdownDisplay.textContent = "Error. Recargue manualmente.";
+      countdownDisplay.style.display = 'block';
+    }
+  };
+  
   countdownDisplay.textContent = `Redireccionando en ${segundos} segundos...`;
 
   const interval = setInterval(() => {
     segundos--;
     
     if (segundos <= 0) {
+      // 3. Cuando el tiempo termina
       clearInterval(interval);
-      countdownDisplay.textContent = "Redireccionando...";
-      try {
-        limpiarCache(); // Limpia el caché
-        window.top.location.href = GLOBAL_APP_URL; // Redirecciona a la URL principal
-      } catch(e) {
-        countdownDisplay.textContent = "Error al redireccionar. Recargue manualmente.";
-      }
+      countdownDisplay.style.display = 'none'; // Ocultar contador
+      volverButton.style.display = 'block'; // Mostrar botón
+      
     } else {
       countdownDisplay.textContent = `Redireccionando en ${segundos} segundos...`;
     }

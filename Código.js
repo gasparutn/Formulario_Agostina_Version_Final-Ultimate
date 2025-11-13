@@ -1,6 +1,8 @@
 /**
- * (MODIFICADO)
- * Eliminada la lógica de 'payment_id' de Mercado Pago.
+ * (MODIFICADO v15-CORREGIDO)
+ * - Se actualiza el número de columnas de 48 a 47 en `registrarDatos`.
+ * - Todas las demás referencias (COL_COLEGIO_JARDIN, COL_DNI_INSCRIPTO, etc.)
+ * se actualizan automáticamente desde el nuevo `Constantes.js`.
  */
 function doGet(e) {
   try {
@@ -39,7 +41,6 @@ function doGet(e) {
 }
 
 /**
- * (MODIFICADO)
  * 'doPost' ya no es necesario para el webhook de MP.
  */
 function doPost(e) {
@@ -48,12 +49,10 @@ function doPost(e) {
 }
 
 /**
-* (CORREGIDO)
-* (FIX #2) Corregida la asignación de teléfonos para nuevos usuarios.
-* (FIX #4) Corregida la asignación de estado para 'Hermano/a'.
-* (FIX #5 - Error 1) Añadidos los campos de salud que faltaban.
-* (CORRECCIÓN FECHA) Añadida la corrección de zona horaria al guardar fechas.
-* (CORRECCIÓN SINTAXIS) Corregida la concatenación de 'telResp' para evitar 'Unexpected token'.
+* (MODIFICADO v15-CORREGIDO)
+* - Se actualiza el número de columnas de 48 a 47 en `registrarDatos`.
+* - Todas las constantes (COL_COLEGIO_JARDIN, COL_DNI_INSCRIPTO, etc.)
+* se leen desde el nuevo Constantes.js y apuntan a las columnas correctas.
 */
 function registrarDatos(datos, testSheetName) {
   Logger.log("REGISTRAR DATOS INICIADO. Datos: " + JSON.stringify(datos));
@@ -116,106 +115,99 @@ function registrarDatos(datos, testSheetName) {
     // Buscar si ya existe el DNI en registros
     let filaExistente = null;
     if (hojaRegistro.getLastRow() > 1) {
+      // (MODIFICADO v15-CORREGIDO) COL_DNI_INSCRIPTO ahora apunta a J (10)
       const rangoDNI = hojaRegistro.getRange(2, COL_DNI_INSCRIPTO, hojaRegistro.getLastRow() - 1, 1);
       const celda = rangoDNI.createTextFinder(dniLimpio).matchEntireCell(true).findNext();
       if (celda) filaExistente = celda.getRow();
     }
 
     // Si existe, actualizar en su lugar (comportamiento seguro para evitar duplicados)
-    // ESTE BLOQUE ES PARA 'actualizarDatosHermano'
     if (filaExistente) {
       try {
-        // Actualizar campos principales (similar a actualizarDatosHermano pero para registro principal)
+        // Actualizar campos principales
         
-        // =========================================================
-        // --- ¡¡INICIO CORRECCIÓN SINTAXIS 'const'!! ---
-        // (Usamos + en lugar de `` para evitar errores del editor)
-        // =========================================================
         const telResp1 = datos.telAreaResp1 && datos.telNumResp1 ? '(' + datos.telAreaResp1 + ') ' + datos.telNumResp1 : datos.telResp1 || '';
         const telResp2 = datos.telAreaResp2 && datos.telNumResp2 ? '(' + datos.telAreaResp2 + ') ' + datos.telNumResp2 : datos.telResp2 || '';
-        // =========================================================
-        // --- ¡¡FIN CORRECCIÓN SINTAXIS!! ---
-        // =========================================================
 
-        hojaRegistro.getRange(filaExistente, COL_EMAIL).setValue(datos.email || '');
-        hojaRegistro.getRange(filaExistente, COL_NOMBRE).setValue(datos.nombre || '');
-        hojaRegistro.getRange(filaExistente, COL_APELLIDO).setValue(datos.apellido || '');
+        hojaRegistro.getRange(filaExistente, COL_EMAIL).setValue(datos.email || ''); // E
+        hojaRegistro.getRange(filaExistente, COL_NOMBRE).setValue(datos.nombre || ''); // F
+        hojaRegistro.getRange(filaExistente, COL_APELLIDO).setValue(datos.apellido || ''); // G
 
-        // =========================================================
-        // --- ¡¡INICIO CORRECCIÓN ZONA HORARIA (1 de 2)!! ---
-        // (Corregimos la fecha antes de guardarla)
-        // =========================================================
         let fechaNacObj = null;
         if (datos.fechaNacimiento) {
-          fechaNacObj = new Date(datos.fechaNacimiento); // Crea la fecha (ej: 2010-10-20T00:00:00Z)
-          fechaNacObj.setMinutes(fechaNacObj.getMinutes() + fechaNacObj.getTimezoneOffset()); // Ajusta a local (ej: 2010-10-20T00:00:00-03:00)
+          fechaNacObj = new Date(datos.fechaNacimiento);
+          fechaNacObj.setMinutes(fechaNacObj.getMinutes() + fechaNacObj.getTimezoneOffset());
         }
-        hojaRegistro.getRange(filaExistente, COL_FECHA_NACIMIENTO_REGISTRO).setValue(fechaNacObj || '');
-        // =========================================================
-        // --- ¡¡FIN CORRECCIÓN ZONA HORARIA (1 de 2)!! ---
-        // =========================================================
+        hojaRegistro.getRange(filaExistente, COL_FECHA_NACIMIENTO_REGISTRO).setValue(fechaNacObj || ''); // H
 
-        hojaRegistro.getRange(filaExistente, COL_OBRA_SOCIAL).setValue(datos.obraSocial || '');
-        hojaRegistro.getRange(filaExistente, COL_COLEGIO_JARDIN).setValue(datos.colegioJardin || '');
-        hojaRegistro.getRange(filaExistente, COL_ADULTO_RESPONSABLE_1).setValue(datos.adultoResponsable1 || '');
-        hojaRegistro.getRange(filaExistente, COL_DNI_RESPONSABLE_1).setValue(datos.dniResponsable1 || '');
-        hojaRegistro.getRange(filaExistente, COL_TEL_RESPONSABLE_1).setValue(telResp1);
-        hojaRegistro.getRange(filaExistente, COL_ADULTO_RESPONSABLE_2).setValue(datos.adultoResponsable2 || '');
-        hojaRegistro.getRange(filaExistente, COL_TEL_RESPONSABLE_2).setValue(telResp2);
-        hojaRegistro.getRange(filaExistente, COL_PERSONAS_AUTORIZADAS).setValue(datos.personasAutorizadas || '');
+        // (MODIFICADO v15-CORREGIDO) COL_OBRA_SOCIAL (K) y COL_COLEGIO_JARDIN (L)
+        hojaRegistro.getRange(filaExistente, COL_OBRA_SOCIAL).setValue(datos.obraSocial || ''); // K
+        hojaRegistro.getRange(filaExistente, COL_COLEGIO_JARDIN).setValue(datos.colegioJardin || ''); // L
         
-        // =========================================================
-        // --- ¡¡INICIO DE LA CORRECCIÓN (Error 1)!! ---
-        // (Añadidos los campos de salud que faltaban al actualizar)
-        // =========================================================
-        hojaRegistro.getRange(filaExistente, COL_PRACTICA_DEPORTE).setValue(datos.practicaDeporte || '');
-        hojaRegistro.getRange(filaExistente, COL_ESPECIFIQUE_DEPORTE).setValue(datos.especifiqueDeporte || '');
-        hojaRegistro.getRange(filaExistente, COL_TIENE_ENFERMEDAD).setValue(datos.tieneEnfermedad || '');
-        hojaRegistro.getRange(filaExistente, COL_ESPECIFIQUE_ENFERMEDAD).setValue(datos.especifiqueEnfermedad || '');
-        hojaRegistro.getRange(filaExistente, COL_ES_ALERGICO).setValue(datos.esAlergico || '');
-        hojaRegistro.getRange(filaExistente, COL_ESPECIFIQUE_ALERGIA).setValue(datos.especifiqueAlergia || '');
-        // =========================================================
-        // --- ¡¡FIN DE LA CORRECCIÓN (Error 1)!! ---
-        // =========================================================
+        hojaRegistro.getRange(filaExistente, COL_ADULTO_RESPONSABLE_1).setValue(datos.adultoResponsable1 || ''); // M
+        hojaRegistro.getRange(filaExistente, COL_DNI_RESPONSABLE_1).setValue(datos.dniResponsable1 || ''); // N
+        hojaRegistro.getRange(filaExistente, COL_TEL_RESPONSABLE_1).setValue(telResp1); // O
+        hojaRegistro.getRange(filaExistente, COL_ADULTO_RESPONSABLE_2).setValue(datos.adultoResponsable2 || ''); // P
+        hojaRegistro.getRange(filaExistente, COL_TEL_RESPONSABLE_2).setValue(telResp2); // Q
+        hojaRegistro.getRange(filaExistente, COL_PERSONAS_AUTORIZADAS).setValue(datos.personasAutorizadas || ''); // R
+        
+        // Campos de salud (S-X)
+        hojaRegistro.getRange(filaExistente, COL_PRACTICA_DEPORTE).setValue(datos.practicaDeporte || ''); // S
+        hojaRegistro.getRange(filaExistente, COL_ESPECIFIQUE_DEPORTE).setValue(datos.especifiqueDeporte || ''); // T
+        hojaRegistro.getRange(filaExistente, COL_TIENE_ENFERMEDAD).setValue(datos.tieneEnfermedad || ''); // U
+        hojaRegistro.getRange(filaExistente, COL_ESPECIFIQUE_ENFERMEDAD).setValue(datos.especifiqueEnfermedad || ''); // V
+        hojaRegistro.getRange(filaExistente, COL_ES_ALERGICO).setValue(datos.esAlergico || ''); // W
+        hojaRegistro.getRange(filaExistente, COL_ESPECIFIQUE_ALERGIA).setValue(datos.especifiqueAlergia || ''); // X
 
-        hojaRegistro.getRange(filaExistente, COL_JORNADA).setValue(datos.jornada || '');
-        hojaRegistro.getRange(filaExistente, COL_SOCIO).setValue(datos.esSocio || '');
-        hojaRegistro.getRange(filaExistente, COL_METODO_PAGO).setValue(datos.metodoPago || '');
-        hojaRegistro.getRange(filaExistente, COL_PRECIO).setValue(datos.precio || '');
-        hojaRegistro.getRange(filaExistente, COL_CANTIDAD_CUOTAS).setValue(datos.cantidadCuotas || '');
-        hojaRegistro.getRange(filaExistente, COL_ESTADO_PAGO).setValue(datos.estadoPago || '');
-        hojaRegistro.getRange(filaExistente, COL_MONTO_A_PAGAR).setValue(datos.montoAPagar || '');
+        // Jornada y Pago (AA en adelante)
+        hojaRegistro.getRange(filaExistente, COL_JORNADA).setValue(datos.jornada || ''); // AA
+        hojaRegistro.getRange(filaExistente, COL_SOCIO).setValue(datos.esSocio || ''); // AB
+        
+        // (MODIFICADO v15) La lógica de v14 sigue funcionando, pero las constantes apuntan a nuevos lugares
+        hojaRegistro.getRange(filaExistente, COL_METODO_PAGO).setValue(datos.metodoPago || ''); // AC
+        hojaRegistro.getRange(filaExistente, COL_MODO_PAGO_CUOTA).setValue(datos.subMetodoCuotas || ''); // AD
+        hojaRegistro.getRange(filaExistente, COL_PRECIO).setValue(datos.precio || ''); // AE (Precio Total)
+        hojaRegistro.getRange(filaExistente, COL_CANTIDAD_CUOTAS).setValue(datos.cantidadCuotas || ''); // AI
+        hojaRegistro.getRange(filaExistente, COL_ESTADO_PAGO).setValue(datos.estadoPago || ''); // AJ
+        hojaRegistro.getRange(filaExistente, COL_MONTO_A_PAGAR).setValue(datos.montoAPagar); // AK (Vacío o Total)
 
-        // Pagador manual
+        // Escribir el valor de cuota individual en AF, AG, AH
+        if (datos.cantidadCuotas === 3 && datos.valorCuota > 0) {
+          hojaRegistro.getRange(filaExistente, COL_CUOTA_1).setValue(datos.valorCuota); // AF
+          hojaRegistro.getRange(filaExistente, COL_CUOTA_2).setValue(datos.valorCuota); // AG
+          hojaRegistro.getRange(filaExistente, COL_CUOTA_3).setValue(datos.valorCuota); // AH
+        }
+
+        // Pagador manual (AL, AM)
         if (datos.pagadorNombreManual) {
-          hojaRegistro.getRange(filaExistente, COL_PAGADOR_NOMBRE_MANUAL).setValue(datos.pagadorNombreManual);
+          hojaRegistro.getRange(filaExistente, COL_PAGADOR_NOMBRE_MANUAL).setValue(datos.pagadorNombreManual); // AL
         }
         if (datos.pagadorDniManual) {
-          hojaRegistro.getRange(filaExistente, COL_PAGADOR_DNI_MANUAL).setValue(datos.pagadorDniManual);
+          hojaRegistro.getRange(filaExistente, COL_PAGADOR_DNI_MANUAL).setValue(datos.pagadorDniManual); // AM
         }
 
-        // Aptitud / Foto (si provee URL simple, convertir a fórmula HYPERLINK)
+        // Aptitud (Y) / Foto (Z)
         if (datos.urlCertificadoAptitud) {
           const val = String(datos.urlCertificadoAptitud).startsWith('=HYPERLINK') ? datos.urlCertificadoAptitud : `=HYPERLINK("${datos.urlCertificadoAptitud}"; "Aptitud_${dniLimpio}")`;
-          hojaRegistro.getRange(filaExistente, COL_APTITUD_FISICA).setValue(val);
+          hojaRegistro.getRange(filaExistente, COL_APTITUD_FISICA).setValue(val); // Y
         }
         if (datos.urlFotoCarnet) {
           const valf = String(datos.urlFotoCarnet).startsWith('=HYPERLINK') ? datos.urlFotoCarnet : `=HYPERLINK("${datos.urlFotoCarnet}"; "Foto_${dniLimpio}")`;
-          hojaRegistro.getRange(filaExistente, COL_FOTO_CARNET).setValue(valf);
+          hojaRegistro.getRange(filaExistente, COL_FOTO_CARNET).setValue(valf); // Z
         }
         
-        // Vínculo familiar (si se está actualizando un hermano)
+        // Vínculo familiar (AR)
         if (datos.vinculoPrincipal) {
-           hojaRegistro.getRange(filaExistente, COL_VINCULO_PRINCIPAL).setValue(datos.vinculoPrincipal);
+           hojaRegistro.getRange(filaExistente, COL_VINCULO_PRINCIPAL).setValue(datos.vinculoPrincipal); // AR
         }
 
-        // --- INICIO DE LA CORRECCIÓN (Cálculo de Grupo y Color) ---
+        // --- Cálculo de Grupo y Color (H, I) ---
         try {
           const fechaNacStr = datos.fechaNacimiento;
           if (fechaNacStr) {
-            const grupo = determinarGrupoPorFecha(fechaNacStr); // Asume que determinarGrupoPorFecha está disponible
-            hojaRegistro.getRange(filaExistente, COL_GRUPOS).setValue(grupo);
-            aplicarColorGrupo(hojaRegistro, filaExistente, grupo, hojaConfig); // Asume que aplicarColorGrupo está disponible
+            const grupo = determinarGrupoPorFecha(fechaNacStr);
+            hojaRegistro.getRange(filaExistente, COL_GRUPOS).setValue(grupo); // I
+            aplicarColorGrupo(hojaRegistro, filaExistente, grupo, hojaConfig);
             Logger.log(`Grupo [${grupo}] y color RE-aplicados para DNI ${dniLimpio} en fila ${filaExistente}.`);
           }
         } catch (e) {
@@ -238,11 +230,14 @@ function registrarDatos(datos, testSheetName) {
     const registrosActuales = lastRow > 1 ? hojaRegistro.getRange(2, COL_NUMERO_TURNO, lastRow - 1, 1).getValues().filter(r => r[0] !== '' && r[0] != null).length : 0;
     const numeroDeTurno = registrosActuales + 1;
 
-    const totalCols = Math.max(50, hojaRegistro.getLastColumn()); // Asegurar que haya 50 columnas
+    // --- MODIFICACIÓN v15-CORREGIDO ---
+    // Usamos el número de columnas de la hoja (que ahora es 47)
+    const totalCols = Math.max(47, hojaRegistro.getLastColumn()); 
     const valoresFila = new Array(totalCols).fill('');
+    // --- FIN MODIFICACIÓN v15-CORREGIDO ---
 
-    valoresFila[COL_NUMERO_TURNO - 1] = numeroDeTurno;
-    valoresFila[COL_MARCA_TEMPORAL - 1] = new Date();
+    valoresFila[COL_NUMERO_TURNO - 1] = numeroDeTurno; // A
+    valoresFila[COL_MARCA_TEMPORAL - 1] = new Date(); // B
 
     const esPreventaReg = datos.esPreventa === true || datos.tipoInscripto === 'preventa';
     let marcaNE = '';
@@ -251,7 +246,7 @@ function registrarDatos(datos, testSheetName) {
     } else {
       marcaNE = esPreventaReg ? 'Normal (Pre-Venta)' : 'Normal';
     }
-    valoresFila[COL_MARCA_N_E_A - 1] = marcaNE;
+    valoresFila[COL_MARCA_N_E_A - 1] = marcaNE; // C
 
     let estadoNuevoAnt = 'Nuevo';
     if (datos.tipoInscripto === 'hermano/a') {
@@ -266,91 +261,89 @@ function registrarDatos(datos, testSheetName) {
       if (esPreventaReg) estadoNuevoAnt = 'Pre-Venta';
       else if (datos.tipoInscripto === 'anterior') estadoNuevoAnt = 'Anterior';
     }
-    valoresFila[COL_ESTADO_NUEVO_ANT - 1] = estadoNuevoAnt;
+    valoresFila[COL_ESTADO_NUEVO_ANT - 1] = estadoNuevoAnt; // D
 
-    valoresFila[COL_EMAIL - 1] = datos.email || '';
-    valoresFila[COL_NOMBRE - 1] = datos.nombre || '';
-    valoresFila[COL_APELLIDO - 1] = datos.apellido || '';
+    valoresFila[COL_EMAIL - 1] = datos.email || ''; // E
+    valoresFila[COL_NOMBRE - 1] = datos.nombre || ''; // F
+    valoresFila[COL_APELLIDO - 1] = datos.apellido || ''; // G
 
-    // =========================================================
-    // --- ¡¡INICIO CORRECCIÓN ZONA HORARIA (2 de 2)!! ---
-    // (Corregimos la fecha antes de guardarla)
-    // =========================================================
     let fechaNacObjNueva = null;
     if (datos.fechaNacimiento) {
       fechaNacObjNueva = new Date(datos.fechaNacimiento);
       fechaNacObjNueva.setMinutes(fechaNacObjNueva.getMinutes() + fechaNacObjNueva.getTimezoneOffset());
     }
-    valoresFila[COL_FECHA_NACIMIENTO_REGISTRO - 1] = fechaNacObjNueva || '';
-    // =========================================================
-    // --- ¡¡FIN CORRECCIÓN ZONA HORARIA (2 de 2)!! ---
-    // =========================================================
+    valoresFila[COL_FECHA_NACIMIENTO_REGISTRO - 1] = fechaNacObjNueva || ''; // H
 
-    valoresFila[COL_DNI_INSCRIPTO - 1] = dniLimpio || '';
-    valoresFila[COL_OBRA_SOCIAL - 1] = datos.obraSocial || '';
-    valoresFila[COL_COLEGIO_JARDIN - 1] = datos.colegioJardin || '';
-    valoresFila[COL_ADULTO_RESPONSABLE_1 - 1] = datos.adultoResponsable1 || '';
-    valoresFila[COL_DNI_RESPONSABLE_1 - 1] = datos.dniResponsable1 || '';
-
+    // (MODIFICADO v15-CORREGIDO)
+    valoresFila[COL_DNI_INSCRIPTO - 1] = dniLimpio || ''; // J
+    valoresFila[COL_OBRA_SOCIAL - 1] = datos.obraSocial || ''; // K
+    valoresFila[COL_COLEGIO_JARDIN - 1] = datos.colegioJardin || ''; // L
+    
+    valoresFila[COL_ADULTO_RESPONSABLE_1 - 1] = datos.adultoResponsable1 || ''; // M
+    valoresFila[COL_DNI_RESPONSABLE_1 - 1] = datos.dniResponsable1 || ''; // N
     const telResp1 = (datos.telAreaResp1 && datos.telNumResp1) ? '(' + datos.telAreaResp1 + ') ' + datos.telNumResp1 : '';
     const telResp2 = (datos.telAreaResp2 && datos.telNumResp2) ? '(' + datos.telAreaResp2 + ') ' + datos.telNumResp2 : '';
-    valoresFila[COL_TEL_RESPONSABLE_1 - 1] = telResp1;
-    valoresFila[COL_ADULTO_RESPONSABLE_2 - 1] = datos.adultoResponsable2 || '';
-    valoresFila[COL_TEL_RESPONSABLE_2 - 1] = telResp2;
+    valoresFila[COL_TEL_RESPONSABLE_1 - 1] = telResp1; // O
+    valoresFila[COL_ADULTO_RESPONSABLE_2 - 1] = datos.adultoResponsable2 || ''; // P
+    valoresFila[COL_TEL_RESPONSABLE_2 - 1] = telResp2; // Q
 
-    valoresFila[COL_PERSONAS_AUTORIZADAS - 1] = datos.personasAutorizadas || '';
+    valoresFila[COL_PERSONAS_AUTORIZADAS - 1] = datos.personasAutorizadas || ''; // R
 
-    // =========================================================
-    // --- ¡¡INICIO DE LA CORRECCIÓN (Error 1)!! ---
-    // (Añadidos los campos de salud que faltaban al crear)
-    // =========================================================
-    valoresFila[COL_PRACTICA_DEPORTE - 1] = datos.practicaDeporte || '';
-    valoresFila[COL_ESPECIFIQUE_DEPORTE - 1] = datos.especifiqueDeporte || '';
-    valoresFila[COL_TIENE_ENFERMEDAD - 1] = datos.tieneEnfermedad || '';
-    valoresFila[COL_ESPECIFIQUE_ENFERMEDAD - 1] = datos.especifiqueEnfermedad || '';
-    valoresFila[COL_ES_ALERGICO - 1] = datos.esAlergico || '';
-    valoresFila[COL_ESPECIFIQUE_ALERGIA - 1] = datos.especifiqueAlergia || '';
-    // =========================================================
-    // --- ¡¡FIN DE LA CORRECCIÓN (Error 1)!! ---
-    // =========================================================
+    // Campos de salud (S-X)
+    valoresFila[COL_PRACTICA_DEPORTE - 1] = datos.practicaDeporte || ''; // S
+    valoresFila[COL_ESPECIFIQUE_DEPORTE - 1] = datos.especifiqueDeporte || ''; // T
+    valoresFila[COL_TIENE_ENFERMEDAD - 1] = datos.tieneEnfermedad || ''; // U
+    valoresFila[COL_ESPECIFIQUE_ENFERMEDAD - 1] = datos.especifiqueEnfermedad || ''; // V
+    valoresFila[COL_ES_ALERGICO - 1] = datos.esAlergico || ''; // W
+    valoresFila[COL_ESPECIFIQUE_ALERGIA - 1] = datos.especifiqueAlergia || ''; // X
 
+    // Aptitud (Y) y Foto (Z)
     if (datos.urlCertificadoAptitud) {
-      valoresFila[COL_APTITUD_FISICA - 1] = String(datos.urlCertificadoAptitud).startsWith('=HYPERLINK') ? datos.urlCertificadoAptitud : `=HYPERLINK("${datos.urlCertificadoAptitud}"; "Aptitud_${dniLimpio}")`;
+      valoresFila[COL_APTITUD_FISICA - 1] = String(datos.urlCertificadoAptitud).startsWith('=HYPERLINK') ? datos.urlCertificadoAptitud : `=HYPERLINK("${datos.urlCertificadoAptitud}"; "Aptitud_${dniLimpio}")`; // Y
     }
     if (datos.urlFotoCarnet) {
-      valoresFila[COL_FOTO_CARNET - 1] = String(datos.urlFotoCarnet).startsWith('=HYPERLINK') ? datos.urlFotoCarnet : `=HYPERLINK("${datos.urlFotoCarnet}"; "Foto_${dniLimpio}")`;
+      valoresFila[COL_FOTO_CARNET - 1] = String(datos.urlFotoCarnet).startsWith('=HYPERLINK') ? datos.urlFotoCarnet : `=HYPERLINK("${datos.urlFotoCarnet}"; "Foto_${dniLimpio}")`; // Z
     }
 
-    valoresFila[COL_JORNADA - 1] = datos.jornada || '';
-    valoresFila[COL_SOCIO - 1] = datos.esSocio || '';
+    valoresFila[COL_JORNADA - 1] = datos.jornada || ''; // AA
+    valoresFila[COL_SOCIO - 1] = datos.esSocio || ''; // AB
 
-    valoresFila[COL_METODO_PAGO - 1] = datos.metodoPago || '';
-    valoresFila[COL_PRECIO - 1] = datos.precio || '';
-    valoresFila[COL_CANTIDAD_CUOTAS - 1] = datos.cantidadCuotas || '';
-    valoresFila[COL_ESTADO_PAGO - 1] = datos.estadoPago || '';
-    valoresFila[COL_MONTO_A_PAGAR - 1] = datos.montoAPagar || '';
+    // (MODIFICADO v15) La lógica de v14 sigue funcionando, pero las constantes apuntan a nuevos lugares
+    valoresFila[COL_METODO_PAGO - 1] = datos.metodoPago || ''; // AC
+    valoresFila[COL_MODO_PAGO_CUOTA - 1] = datos.subMetodoCuotas || ''; // AD
+    valoresFila[COL_PRECIO - 1] = datos.precio || ''; // AE (Precio Total)
+    valoresFila[COL_CANTIDAD_CUOTAS - 1] = datos.cantidadCuotas || ''; // AI
+    valoresFila[COL_ESTADO_PAGO - 1] = datos.estadoPago || ''; // AJ
+    valoresFila[COL_MONTO_A_PAGAR - 1] = datos.montoAPagar; // AK (Vacío o Total)
 
-    // Vinculo familiar: si viene explícito (para hermanos) o si es el principal (pagoFamiliar)
+    // Escribir el valor de cuota individual en AF, AG, AH
+    if (datos.cantidadCuotas === 3 && datos.valorCuota > 0) {
+      valoresFila[COL_CUOTA_1 - 1] = datos.valorCuota; // AF
+      valoresFila[COL_CUOTA_2 - 1] = datos.valorCuota; // AG
+      valoresFila[COL_CUOTA_3 - 1] = datos.valorCuota; // AH
+    }
+    
+    // Vinculo familiar (AR)
     if (datos.vinculoPrincipal) {
       valoresFila[COL_VINCULO_PRINCIPAL - 1] = datos.vinculoPrincipal;
     } else if (datos.hermanos && datos.hermanos.length > 0) {
-      // Si es el principal Y tiene hermanos, crear el ID
       valoresFila[COL_VINCULO_PRINCIPAL - 1] = `FAM_${numeroDeTurno}`;
     }
 
-    // Pagador manual inicial
-    if (datos.pagadorNombreManual) valoresFila[COL_PAGADOR_NOMBRE_MANUAL - 1] = datos.pagadorNombreManual;
-    if (datos.pagadorDniManual) valoresFila[COL_PAGADOR_DNI_MANUAL - 1] = datos.pagadorDniManual;
+    // Pagador manual inicial (AL, AM)
+    if (datos.pagadorNombreManual) valoresFila[COL_PAGADOR_NOMBRE_MANUAL - 1] = datos.pagadorNombreManual; // AL
+    if (datos.pagadorDniManual) valoresFila[COL_PAGADOR_DNI_MANUAL - 1] = datos.pagadorDniManual; // AM
 
     // Insertar la fila
     hojaRegistro.appendRow(valoresFila);
     const nuevaFila = hojaRegistro.getLastRow();
-    // --- INICIO DE LA CORRECCIÓN: Integrar Cálculo de Grupo y Color ---
+    
+    // --- Cálculo de Grupo y Color (H, I) ---
     try {
       const fechaNacStr = datos.fechaNacimiento;
       if (fechaNacStr) {
         const grupo = determinarGrupoPorFecha(fechaNacStr);
-        hojaRegistro.getRange(nuevaFila, COL_GRUPOS).setValue(grupo);
+        hojaRegistro.getRange(nuevaFila, COL_GRUPOS).setValue(grupo); // I
         aplicarColorGrupo(hojaRegistro, nuevaFila, grupo, hojaConfig);
       } else {
          Logger.log(`No se pudo calcular el grupo para ${dniLimpio}: sin fecha de nacimiento.`);
@@ -377,6 +370,7 @@ function registrarDatos(datos, testSheetName) {
 
 /**
  * Permite a un usuario ya registrado editar campos específicos.
+ * (MODIFICADO v15) No requiere cambios, usa constantes.
  */
 function actualizarDatosPersonales(dni, datosEditados) {
   const lock = LockService.getScriptLock();
@@ -464,7 +458,6 @@ function actualizarDatosPersonales(dni, datosEditados) {
 }
 
 /**
- * (MOVIDA AQUÍ)
  * Calcula la edad en años, meses y días a partir de una fecha de nacimiento.
  */
 function calcularEdadDetallada(fechaNacimiento) {
@@ -539,6 +532,12 @@ function obtenerEstadoRegistro() {
   }
 }
 
+/**
+ * (MODIFICADO v15-CORREGIDO)
+ * - Esta función no requiere cambios internos, ya que todas las
+ * lecturas de columnas (COL_DNI_INSCRIPTO, COL_ESTADO_PAGO, etc.)
+ * se actualizan automáticamente desde `Constantes.js`.
+ */
 function validarAcceso(dni, tipoInscripto) {
   try {
     if (!dni || !/^[0-9]{8}$/.test(dni.trim()))
@@ -559,7 +558,7 @@ function validarAcceso(dni, tipoInscripto) {
 
     if (hojaRegistro && hojaRegistro.getLastRow() > 1) {
       const celdaRegistro = hojaRegistro
-        .getRange(2, COL_DNI_INSCRIPTO, hojaRegistro.getLastRow() - 1, 1)
+        .getRange(2, COL_DNI_INSCRIPTO, hojaRegistro.getLastRow() - 1, 1) // Ahora J (10)
         .createTextFinder(dniLimpio)
         .matchEntireCell(true)
         .findNext();
@@ -770,6 +769,12 @@ function validarAcceso(dni, tipoInscripto) {
   }
 }
 
+/**
+ * (MODIFICADO v15-CORREGIDO)
+ * - Esta función ahora usa la constante COL_ENVIAR_EMAIL_MANUAL
+ * que se actualiza automáticamente desde Constantes.js (ahora es 45, AS).
+ * También se ajusta la descripción de la protección.
+ */
 function configurarColumnaEnviarEmailComoCheckboxDeshabilitada() {
   try {
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -778,6 +783,8 @@ function configurarColumnaEnviarEmailComoCheckboxDeshabilitada() {
 
     const lastRow = Math.max(hoja.getLastRow(), 2);
     const numRows = Math.max(1, lastRow - 1);
+    
+    // (MODIFICADO v15) Esta constante (COL_ENVIAR_EMAIL_MANUAL) ahora apunta a la columna 45 (AS)
     const rango = hoja.getRange(2, COL_ENVIAR_EMAIL_MANUAL, numRows, 1);
 
     rango.clearContent();
@@ -790,7 +797,7 @@ function configurarColumnaEnviarEmailComoCheckboxDeshabilitada() {
     rango.setValues(valores);
 
     try {
-      const proteccion = rango.protect().setDescription('Columna AU: checkbox deshabilitada por configuración.');
+      const proteccion = rango.protect().setDescription('Columna AS: checkbox deshabilitada por configuración.');
       const me = Session.getEffectiveUser();
       proteccion.addEditor(me);
       const editors = proteccion.getEditors();
@@ -803,20 +810,22 @@ function configurarColumnaEnviarEmailComoCheckboxDeshabilitada() {
       });
       if (proteccion.canDomainEdit && proteccion.canDomainEdit()) proteccion.setDomainEdit(false);
     } catch (e) {
-      Logger.log('Advertencia: no se pudo aplicar protección a la columna AU: ' + e.message);
+      Logger.log('Advertencia: no se pudo aplicar protección a la columna AS: ' + e.message);
     }
 
-    return { status: 'OK', message: 'Columna AU configurada como casillas y deshabilitada (protección aplicada cuando fue posible).' };
+    return { status: 'OK', message: 'Columna AS configurada como casillas y deshabilitada (protección aplicada cuando fue posible).' };
   } catch (e) {
     Logger.log('Error en configurarColumnaEnviarEmailComoCheckboxDeshabilitada: ' + e.message);
-    return { status: 'ERROR', message: 'Error al configurar la columna AU: ' + e.message };
+    return { status: 'ERROR', message: 'Error al configurar la columna AS: ' + e.message };
   }
 }
 
 
 /**
- * (MODIFICADO)
- * - Esta función ahora incluye la corrección para el bug de redirección de hermanos.
+ * (MODIFICADO v15-CORREGIDO)
+ * - Esta función no requiere cambios internos, ya que todas las
+ * lecturas de columnas (COL_ESTADO_PAGO, COL_CANTIDAD_CUOTAS, etc.)
+ * se actualizan automáticamente desde `Constantes.js`.
  */
 function gestionarUsuarioYaRegistrado(
   ss,
@@ -831,14 +840,14 @@ function gestionarUsuarioYaRegistrado(
     .getRange(filaRegistro, 1, 1, hojaRegistro.getLastColumn())
     .getValues()[0];
 
-  let estadoPago = rangoFila[COL_ESTADO_PAGO - 1];
-  const metodoPago = rangoFila[COL_METODO_PAGO - 1];
+  let estadoPago = rangoFila[COL_ESTADO_PAGO - 1]; // Nueva Col AJ (36)
+  const metodoPago = rangoFila[COL_METODO_PAGO - 1]; // Sin cambio (AC)
   
-  const nombreRegistrado = rangoFila[COL_NOMBRE - 1];
-  const apellidoRegistrado = rangoFila[COL_APELLIDO - 1];
+  const nombreRegistrado = rangoFila[COL_NOMBRE - 1]; // Sin cambio (F)
+  const apellidoRegistrado = rangoFila[COL_APELLIDO - 1]; // Sin cambio (G)
   const nombreCompleto = `${nombreRegistrado} ${apellidoRegistrado}`;
 
-  const estadoInscripto = rangoFila[COL_ESTADO_NUEVO_ANT - 1];
+  const estadoInscripto = rangoFila[COL_ESTADO_NUEVO_ANT - 1]; // Sin cambio (D)
   const estadoInscriptoTrim = estadoInscripto
     ? String(estadoInscripto).trim().toLowerCase()
     : "";
@@ -854,21 +863,24 @@ function gestionarUsuarioYaRegistrado(
   const datosParaEdicion = {
     dni: dniLimpio,
     nombre: nombreRegistrado,
-    // ... (resto de datos para edición) ...
-    urlCertificadoAptitud: rangoFila[COL_APTITUD_FISICA - 1] || ''
+    apellido: apellidoRegistrado,
+    email: rangoFila[COL_EMAIL - 1] || '',
+    adultoResponsable1: rangoFila[COL_ADULTO_RESPONSABLE_1 - 1] || '',
+    dniResponsable1: rangoFila[COL_DNI_RESPONSABLE_1 - 1] || '',
+    telResponsable1: rangoFila[COL_TEL_RESPONSABLE_1 - 1] || '',
+    adultoResponsable2: rangoFila[COL_ADULTO_RESPONSABLE_2 - 1] || '',
+    telResp2: rangoFila[COL_TEL_RESPONSABLE_2 - 1] || '',
+    personasAutorizadas: rangoFila[COL_PERSONAS_AUTORIZADAS - 1] || '',
+    urlCertificadoAptitud: rangoFila[COL_APTITUD_FISICA - 1] || '' // Y
   };
 
 
   // =========================================================
-  // --- ¡¡INICIO DE LA CORRECCIÓN (BUG REDIRECCIÓN)!! ---
+  // --- BUG REDIRECCIÓN HERMANOS ---
   // =========================================================
-  // Usamos un campo que SÍ está vacío en un pre-registro: `COL_PRACTICA_DEPORTE`.
-  
-  const campoSaludVacio = !rangoFila[COL_PRACTICA_DEPORTE - 1] || rangoFila[COL_PRACTICA_DEPORTE - 1] === "";
+  const campoSaludVacio = !rangoFila[COL_PRACTICA_DEPORTE - 1] || rangoFila[COL_PRACTICA_DEPORTE - 1] === ""; // S
 
   if (estadoInscriptoTrim.includes('hermano/a') && campoSaludVacio) { 
-  // =========================================================
-  // --- ¡¡FIN DE LA CORRECCIÓN (BUG REDIRECCIÓN)!! ---
   // =========================================================
     
     let tipoOriginal = "nuevo"; // Default
@@ -893,8 +905,8 @@ function gestionarUsuarioYaRegistrado(
      const datosCompletos = {
       ...datosParaEdicion,
       fechaNacimiento: rangoFila[COL_FECHA_NACIMIENTO_REGISTRO - 1] ? Utilities.formatDate(new Date(rangoFila[COL_FECHA_NACIMIENTO_REGISTRO - 1]), ss.getSpreadsheetTimeZone(), 'yyyy-MM-dd') : '',
-      obraSocial: rangoFila[COL_OBRA_SOCIAL - 1] || '',
-      colegioJardin: rangoFila[COL_COLEGIO_JARDIN - 1] || '',
+      obraSocial: rangoFila[COL_OBRA_SOCIAL - 1] || '', // K
+      colegioJardin: rangoFila[COL_COLEGIO_JARDIN - 1] || '', // L
       esHermanoCompletando: true, // Flag para el cliente
       esPreventa: estadoInscriptoTrim.includes('pre-venta') // Pasar si es preventa
     };
@@ -914,7 +926,7 @@ function gestionarUsuarioYaRegistrado(
 
   // --- (Inicio de Lógica de Pagos para usuarios COMPLETOS) ---
 
-  const idFamiliar = rangoFila[COL_VINCULO_PRINCIPAL - 1];
+  const idFamiliar = rangoFila[COL_VINCULO_PRINCIPAL - 1]; // Nueva Col AR (44)
   
   let tieneHermanos = false;
   
@@ -929,7 +941,7 @@ function gestionarUsuarioYaRegistrado(
     }
   }
 
-  let cantidadCuotasRegistrada = parseInt(rangoFila[COL_CANTIDAD_CUOTAS - 1]); // AH
+  let cantidadCuotasRegistrada = parseInt(rangoFila[COL_CANTIDAD_CUOTAS - 1]); // Nueva Col AI (35)
   if (
     metodoPago === "Pago en Cuotas" &&
     (isNaN(cantidadCuotasRegistrada) || cantidadCuotasRegistrada < 1)
@@ -941,11 +953,11 @@ function gestionarUsuarioYaRegistrado(
     cantidadCuotasRegistrada = 0; 
   }
 
-  let estadoPagoActual = estadoPago;
-  const c_total = rangoFila[COL_COMPROBANTE_MANUAL_TOTAL_EXT - 1],
-    c_c1 = rangoFila[COL_COMPROBANTE_MANUAL_CUOTA1 - 1],
-    c_c2 = rangoFila[COL_COMPROBANTE_MANUAL_CUOTA2 - 1],
-    c_c3 = rangoFila[COL_COMPROBANTE_MANUAL_CUOTA3 - 1];
+  let estadoPagoActual = estadoPago; // Col AJ (36)
+  const c_total = rangoFila[COL_COMPROBANTE_MANUAL_TOTAL_EXT - 1], // Nueva Col AN (40)
+    c_c1 = rangoFila[COL_COMPROBANTE_MANUAL_CUOTA1 - 1], // Nueva Col AO (41)
+    c_c2 = rangoFila[COL_COMPROBANTE_MANUAL_CUOTA2 - 1], // Nueva Col AP (42)
+    c_c3 = rangoFila[COL_COMPROBANTE_MANUAL_CUOTA3 - 1]; // Nueva Col AQ (43)
   const tieneComprobantes = c_total || c_c1 || c_c2 || c_c3;
 
   if (
@@ -965,7 +977,7 @@ function gestionarUsuarioYaRegistrado(
     hojaRegistro
       .getRange(filaRegistro, COL_ESTADO_PAGO)
       .setValue(estadoPagoActual);
-    hojaRegistro.getRange(filaRegistro, COL_CUOTA_1, 1, 3).clearContent(); 
+    hojaRegistro.getRange(filaRegistro, COL_CUOTA_1, 1, 3).clearContent(); // Limpia AF, AG, AH
     rangoFila = hojaRegistro
       .getRange(filaRegistro, 1, 1, hojaRegistro.getLastColumn())
       .getValues()[0];
@@ -974,14 +986,14 @@ function gestionarUsuarioYaRegistrado(
 
   if (
     String(estadoPagoActual).startsWith("Pendiente") &&
-    (String(rangoFila[COL_CUOTA_1 - 1]).startsWith("Pagada") ||
-      String(rangoFila[COL_CUOTA_2 - 1]).startsWith("Pagada") ||
-      String(rangoFila[COL_CUOTA_3 - 1]).startsWith("Pagada"))
+    (String(rangoFila[COL_CUOTA_1 - 1]).startsWith("Pagada") || // Col AF
+      String(rangoFila[COL_CUOTA_2 - 1]).startsWith("Pagada") || // Col AG
+      String(rangoFila[COL_CUOTA_3 - 1]).startsWith("Pagada")) // Col AH
   ) {
     Logger.log(
       `Corrigiendo datos inconsistentes para DNI ${dniLimpio}: El estado era ${estadoPagoActual} pero las cuotas estaban pagadas. Reseteando cuotas.`
     );
-    hojaRegistro.getRange(filaRegistro, COL_CUOTA_1, 1, 3).clearContent();
+    hojaRegistro.getRange(filaRegistro, COL_CUOTA_1, 1, 3).clearContent(); // Limpia AF, AG, AH
     rangoFila = hojaRegistro
       .getRange(filaRegistro, 1, 1, hojaRegistro.getLastColumn())
       .getValues()[0];
@@ -994,9 +1006,9 @@ function gestionarUsuarioYaRegistrado(
 
   if (metodoPago === "Pago en Cuotas") {
     const cuotas = [
-      rangoFila[COL_CUOTA_1 - 1],
-      rangoFila[COL_CUOTA_2 - 1],
-      rangoFila[COL_CUOTA_3 - 1],
+      rangoFila[COL_CUOTA_1 - 1], // Col AF
+      rangoFila[COL_CUOTA_2 - 1], // Col AG
+      rangoFila[COL_CUOTA_3 - 1], // Col AH
     ];
 
     const tieneComp1 = c_c1 && String(c_c1).trim() !== "";
@@ -1006,12 +1018,15 @@ function gestionarUsuarioYaRegistrado(
     const cuotaText0 = String(cuotas[0] || "");
     const cuotaText1 = String(cuotas[1] || "");
     const cuotaText2 = String(cuotas[2] || "");
-    const aiText = String(estadoPago || "");
+    const aiText = String(estadoPago || ""); // Col AJ
 
     let estadosTexto = [];
     let pagadasCount = 0;
 
     const cuotaEstaPagada = (index, tieneComp, cuotaText, aiContains) => {
+      // (MODIFICADO v14) Si la celda de la cuota (AF, AG, AH) es un número, NO está pagada.
+      // Solo contamos "Pagada" si tiene texto o si tiene comprobante.
+      if (typeof cuotaText === 'number') return false; 
       if (tieneComp) return true;
       if (String(cuotaText).toLowerCase().startsWith("pagada")) return true;
       if (aiContains) return true;
@@ -1129,7 +1144,7 @@ function gestionarUsuarioYaRegistrado(
   if (tieneHermanos && idFamiliar) {
     try {
       const finder = hojaRegistro
-        .getRange(2, COL_VINCULO_PRINCIPAL, hojaRegistro.getLastRow() - 1, 1)
+        .getRange(2, COL_VINCULO_PRINCIPAL, hojaRegistro.getLastRow() - 1, 1) // AR
         .createTextFinder(idFamiliar)
         .matchEntireCell(true);
       
@@ -1143,16 +1158,16 @@ function gestionarUsuarioYaRegistrado(
             .getRange(r, 1, 1, hojaRegistro.getLastColumn())
             .getValues()[0];
         
-        const ctot = filaVals[COL_COMPROBANTE_MANUAL_TOTAL_EXT - 1];
-        const cc1 = filaVals[COL_COMPROBANTE_MANUAL_CUOTA1 - 1];
-        const cc2 = filaVals[COL_COMPROBANTE_MANUAL_CUOTA2 - 1];
-        const cc3 = filaVals[COL_COMPROBANTE_MANUAL_CUOTA3 - 1];
+        const ctot = filaVals[COL_COMPROBANTE_MANUAL_TOTAL_EXT - 1]; // AN
+        const cc1 = filaVals[COL_COMPROBANTE_MANUAL_CUOTA1 - 1]; // AO
+        const cc2 = filaVals[COL_COMPROBANTE_MANUAL_CUOTA2 - 1]; // AP
+        const cc3 = filaVals[COL_COMPROBANTE_MANUAL_CUOTA3 - 1]; // AQ
         let cnt = 0;
         if (cc1 && String(cc1).trim() !== "") cnt++;
         if (cc2 && String(cc2).trim() !== "") cnt++;
         if (cc3 && String(cc3).trim() !== "") cnt++;
         const cantidadCuotasFila = parseInt(
-          filaVals[COL_CANTIDAD_CUOTAS - 1]
+          filaVals[COL_CANTIDAD_CUOTAS - 1] // AI
         );
         const cantidadReal =
           isNaN(cantidadCuotasFila) || cantidadCuotasFila < 1
@@ -1176,7 +1191,7 @@ function gestionarUsuarioYaRegistrado(
 
   const baseResponse = {
     status: "REGISTRO_ENCONTRADO",
-    adeudaAptitud: !rangoFila[COL_APTITUD_FISICA - 1],
+    adeudaAptitud: !rangoFila[COL_APTITUD_FISICA - 1], // Y
     metodoPago: metodoPago,
     pagoTotalMPVisible: pagoTotalMPVisible,
     datos: datosParaEdicion,
@@ -1250,8 +1265,7 @@ function gestionarUsuarioYaRegistrado(
 
 
 /**
- * (MODIFICADO)
- * - Acepta `fileData.fileName` para usarlo en la creación del nombre de archivo.
+ * Sube un archivo a Drive. No requiere cambios.
  */
 function subirArchivoIndividual(fileData, dni, tipoArchivo) {
   try {
@@ -1304,8 +1318,7 @@ function subirArchivoIndividual(fileData, dni, tipoArchivo) {
 }
 
 /**
- * (MODIFICADO)
- * - Genera el =HYPERLINK() aquí
+ * Sube aptitud física. No requiere cambios.
  */
 function subirAptitudManual(dni, fileData) {
   const lock = LockService.getScriptLock();
@@ -1379,8 +1392,7 @@ function subirAptitudManual(dni, fileData) {
 }
 
 /**
- * (RESTAURADA) Lógica de validación de la versión anterior, que es más precisa.
- * Valida el DNI de un hermano/a contra las hojas de Registros, Pre-Venta y Base de Datos.
+ * Valida DNI de hermano. No requiere cambios.
  */
 function validarDNIHermano(dniHermano, dniPrincipal) {
   try {
@@ -1481,9 +1493,7 @@ function validarDNIHermano(dniHermano, dniPrincipal) {
 }
 
 /**
- * (MODIFICADO)
- * Sube un archivo a Drive con un nombre de archivo específico.
- * Devuelve un =HYPERLINK() para la hoja de cálculo.
+ * Sube archivo a Drive. No requiere cambios.
  */
 function uploadFileToDrive(data, mimeType, newFilename, dni, tipoArchivo) {
   try {

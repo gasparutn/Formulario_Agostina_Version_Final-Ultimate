@@ -1,5 +1,8 @@
 <style>
   /* Estilos.css.html */
+  /* (MODIFICADO) Se eliminaron las transparencias (rgba) y filtros 
+     para garantizar la máxima fluidez en celulares. */
+  
   /* Regla Universal para box-sizing */
   * {
     box-sizing: border-box;
@@ -37,7 +40,7 @@
     background-size: contain;
     /* <-- MODIFICADO: Vuelto a 'contain' para mobile */
     background-position: center;
-    background-attachment: fixed;
+    /* background-attachment: fixed; */ /* <-- ELIMINADO PARA FLUIDEZ EN SCROLL */
     padding: 20px;
     /* <-- MODIFICADO: Restaurado padding original */
     background-repeat: no-repeat;
@@ -61,8 +64,12 @@
     margin: auto;
 
     padding: 25px;
-    background-color: rgba(255, 255, 255, 0.70);
-    /* <-- Opacidad reducida de 0.75 */
+    /* ========================================================= */
+    /* --- (CORRECCIÓN DE LAG #1) - Se usa blanco sólido --- */
+    background-color: #FFFFFF;
+    /* background-color: rgba(255, 255, 255, 0.70); */
+    /* ========================================================= */
+    
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     border-radius: 8px;
     /* (V) Agregamos border-radius para un mejor look */
@@ -87,9 +94,12 @@
   }
 
   .form-section {
-    background-color: rgba(255, 255, 255, 0.65);
-    /* <-- Opacidad reducida de 0.7 */
-    /* Fondo blanco con opacidad para cada sección del formulario */
+    /* ========================================================= */
+    /* --- (CORRECCIÓN DE LAG #2) - Se usa blanco sólido (o transparente) --- */
+    /* background-color: rgba(255, 255, 255, 0.65); */
+    /* (Se quita el fondo para que herede el blanco sólido del .container) */
+    /* ========================================================= */
+    
     padding: 20px;
     margin-bottom: 20px;
     border-radius: 6px;
@@ -149,8 +159,11 @@
     border: 1px solid #ccc;
     border-radius: 4px;
     font-size: 1em;
-    background-color: rgba(255, 255, 255, 0.9);
-    /* Fondo ligeramente transparente para inputs */
+    /* ========================================================= */
+    /* --- (CORRECCIÓN DE LAG #3) - Se usa blanco sólido --- */
+    background-color: #FFFFFF;
+    /* background-color: rgba(255, 255, 255, 0.9); */
+    /* ========================================================= */
   }
 
   input[type="file"] {
@@ -564,21 +577,22 @@
   }
 
   /* --- Nuevos Estilos para Contraste de Fondo --- */
+  
+  /* ========================================================= */
+  /* --- (CORRECCIÓN DE LAG #4) - Se elimina el filtro costoso --- */
   .contrasted-background {
-    filter: contrast(120%) brightness(85%);
-    /* Aumenta contraste 20%, oscurece 15% */
+    /* filter: contrast(120%) brightness(85%); */
   }
+  /* ========================================================= */
 
   /* Opcional: si quieres un contraste más fuerte */
   .contrasted-background-strong {
-    filter: contrast(140%) brightness(75%);
-    /* Aumenta contraste 40%, oscurece 25% */
+    /* filter: contrast(140%) brightness(75%); */
   }
 
   /* Opcional: si quieres un efecto más sutil */
   .contrasted-background-subtle {
-    filter: contrast(110%) brightness(90%);
-    /* Aumenta contraste 10%, oscurece 10% */
+    /* filter: contrast(110%) brightness(90%); */
   }
 
   /* --- (NUEVOS ESTILOS) Mensaje Post-Registro Hermanos --- */
@@ -845,5 +859,22 @@
   font-weight: bold;
   color: #6c757d;
   font-size: 0.9em;
+}
+
+/* (NUEVO) Estilos para el botón del modal de "Completo" (copiado del de expirado) */
+#btn-modal-completo-volver {
+  background-color: var(--color-principal); /* Usar el mismo azul */
+  color: white;
+  padding: 12px 15px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+  margin-top: 20px;
+  width: 100%;
+  transition: background-color 0.3s ease;
+}
+#btn-modal-completo-volver:hover {
+  background-color: #0056b3;
 }
 </style>

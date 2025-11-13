@@ -8,20 +8,34 @@
  * de Jornada, Socio y Método de Pago.
  */
 
+
 /**
  * Función principal para obtener el precio basado en la grilla de Config.
+ * (MODIFICADA) Ahora lee el sub-método de pago para cuotas.
  *
- * @param {object} datos - Objeto con los datos del inscripto (.jornada, .metodoPago, .esSocio).
+ * @param {object} datos - Objeto con los datos del inscripto (.jornada, .metodoPago, .esSocio, .subMetodoCuotas).
  * @param {GoogleAppsScript.Spreadsheet.Sheet} hojaConfig - La hoja de "Config" ya abierta.
  * @param {number} indiceHijo - El índice del hijo (0 = Principal, 1 = 1er Hermano, 2 = 2do Hermano, etc.).
  * @returns {{precio: number, montoAPagar: number, cantidadCuotas: number}}
  */
 function obtenerPrecioYConfiguracion(datos, hojaConfig, indiceHijo = 0) {
-  Logger.log(`Calculando precio para indiceHijo: ${indiceHijo}. Datos: Jornada=${datos.jornada}, Metodo=${datos.metodoPago}, Socio=${datos.esSocio}`);
+  Logger.log(`Calculando precio para indiceHijo: ${indiceHijo}. Datos: Jornada=${datos.jornada}, Metodo=${datos.metodoPago}, SubMetodo=${datos.subMetodoCuotas}, Socio=${datos.esSocio}`);
 
   const jornada = datos.jornada;
   const metodoPago = datos.metodoPago;
   const esSocio = (datos.esSocio === "SÍ");
+  
+  // (NUEVO) Determinar el tipo de pago a usar para el precio
+  let tipoPagoParaPrecio = "";
+  if (metodoPago === 'Pago en Cuotas') {
+    // Si es cuotas, usamos el submenú (que será "Efectivo" o "Transferencia")
+    tipoPagoParaPrecio = datos.subMetodoCuotas; 
+  } else {
+    // Si es pago único, usamos el menú principal
+    tipoPagoParaPrecio = metodoPago; // Será "Pago Efectivo..." o "Transferencia"
+  }
+  
+  Logger.log(`Tipo de pago determinado para precio: ${tipoPagoParaPrecio}`);
 
   let precio = 0;
   let montoAPagar = 0;
@@ -30,16 +44,17 @@ function obtenerPrecioYConfiguracion(datos, hojaConfig, indiceHijo = 0) {
 
   try {
     // --- 1. Lógica de Mapeo de Columnas (E, F, G, H) ---
+    // (MODIFICADO) Usa 'tipoPagoParaPrecio' en lugar de 'metodoPago'
     let colLetra = "";
     
     if (esSocio) {
-      if (metodoPago === "Pago Efectivo (Adm del Club)") {
+      if (tipoPagoParaPrecio.includes("Efectivo")) { // "Efectivo" o "Pago Efectivo..."
         colLetra = "E"; // Columna E: Socio Pago Efectivo
-      } else {
+      } else { // "Transferencia"
         colLetra = "F"; // Columna F: Socio Pago Transferencia (y Cuotas)
       }
     } else { // No Socio
-      if (metodoPago === "Pago Efectivo (Adm del Club)") {
+      if (tipoPagoParaPrecio.includes("Efectivo")) {
         colLetra = "G"; // Columna G: No Socio Pago Efectivo
       } else {
         colLetra = "H"; // Columna H: No Socio Pago Transferencia (y Cuotas)
@@ -50,7 +65,7 @@ function obtenerPrecioYConfiguracion(datos, hojaConfig, indiceHijo = 0) {
     let baseRow = 0;
 
     if (jornada === "Jornada Normal") {
-      if (metodoPago === "Pago en Cuotas") {
+      if (metodoPago === "Pago en Cuotas") { // (Esto sigue usando 'metodoPago' para saber si es cuota)
         baseRow = 37;
         cantidadCuotas = 3;
       } else {
@@ -58,7 +73,7 @@ function obtenerPrecioYConfiguracion(datos, hojaConfig, indiceHijo = 0) {
         cantidadCuotas = 1; 
       }
     } else { // Asumimos "Jornada Normal extendida"
-      if (metodoPago === "Pago en Cuotas") {
+      if (metodoPago === "Pago en Cuotas") { // (Esto sigue usando 'metodoPago')
         baseRow = 47;
         cantidadCuotas = 3;
       } else {
@@ -68,9 +83,7 @@ function obtenerPrecioYConfiguracion(datos, hojaConfig, indiceHijo = 0) {
     }
 
     // Determina la fila exacta según el índice del hijo
-    // (0=Registro 1, 1=Registro 2, 2+=Registro 3)
     let rowNum = 0;
-    // (Asegurarse de que el índice no sea mayor a 2)
     const indiceLimitado = Math.min(indiceHijo, 2);
 
     if (indiceLimitado === 0) {
@@ -102,18 +115,32 @@ function obtenerPrecioYConfiguracion(datos, hojaConfig, indiceHijo = 0) {
     Logger.log(`Error en obtenerPrecioYConfiguracion: ${e.message}. Celda: ${celdaPrecio}. Stack: ${e.stack}`);
     return { precio: 0, montoAPagar: 0, cantidadCuotas: 0 };
   }
+
+  // --- 4. Determinar Monto Total y Valor Cuota ---
+  let precioTotal = 0;
+  let valorCuota = 0;
+  let montoAPagarInicial; // (NUEVO)
   
-  // --- 4. Determinar Monto Total ---
   if (cantidadCuotas === 3) {
-    montoAPagar = precio * 3;
-    precio = precio * 3;
+    // 'precio' (de la celda) es el valor de UNA cuota
+    valorCuota = precio;
+    precioTotal = precio * 3;
+    montoAPagarInicial = ''; // (NUEVO) AJ (Monto a Pagar) queda VACÍO
   } else {
-    montoAPagar = precio;
+    // Pago único
+    valorCuota = 0;
+    precioTotal = precio;
+    montoAPagarInicial = precio; // (Mantenemos) AJ se llena con el total
   }
-  
-  Logger.log(`Precio final: ${precio}, Monto a Pagar: ${montoAPagar}, Cuotas: ${cantidadCuotas}`);
-  return { precio: precio, montoAPagar: montoAPagar, cantidadCuotas: cantidadCuotas };
+Logger.log(`Precio Total (AD): ${precioTotal}, Monto a Pagar (AJ): ${montoAPagarInicial}, Valor Cuota (AE/AF/AG): ${valorCuota}, Cuotas: ${cantidadCuotas}`);
+return { 
+    precio: precioTotal, // Col AD (Precio Total)
+    montoAPagar: montoAPagarInicial, // Col AJ (Monto a Pagar)
+    cantidadCuotas: cantidadCuotas,
+    valorCuota: valorCuota // (NUEVA PROPIEDAD)
+  };
 }
+   
 
 /**
  * Función helper para encontrar el índice de un hermano (0, 1, 2+)

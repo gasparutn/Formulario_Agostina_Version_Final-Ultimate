@@ -1,17 +1,13 @@
 // =========================================================
-// Las constantes (COL_EMAIL, COL_ESTADO_PAGO, etc.) se leen
-// automáticamente desde el archivo 'Constantes.gs'.
-//
-// (MODIFICADO) Lógica de precios "Híbrida" (Definitiva)
-// 1. El principal obtiene el precio del último hermano (ej: si son 2, obtiene el precio de "Registro 2").
-// 2. Los hermanos se pre-registran sin precio.
-// 3. Los hermanos, al completar, obtienen su precio escalonado (ej: "Registro 2", "Registro 3")
-//    basado en SUS PROPIAS opciones de jornada/socio.
+// (MODIFICADO v15-CORREGIDO)
+// Este archivo no requiere cambios internos, ya que todas las
+// constantes (COL_DNI_INSCRIPTO, COL_MODO_PAGO_CUOTA, etc.)
+// se leen desde el nuevo `Constantes.js` y apuntan a las
+// columnas correctas (J, K, L, AD, AE, etc.).
 // =========================================================
 
 /**
-* (PASO 1 - MODIFICADO)
-* Lógica de precio "Híbrida" (Definitiva)
+* (PASO 1)
 */
 function paso1_registrarRegistro(datos) {
   Logger.log("PASO 1 INICIADO. Datos recibidos: " + JSON.stringify(datos));
@@ -26,24 +22,21 @@ function paso1_registrarRegistro(datos) {
     // =========================================================
     const hojaConfig = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(NOMBRE_HOJA_CONFIG);
     
-    // 1. Contar el total de hijos en esta transacción (Principal + lista de hermanos)
     const totalHijos = 1 + (datos.hermanos ? datos.hermanos.length : 0);
-    
-    // 2. Determinar el índice de precio para el grupo (Si son 2 hijos, usamos índice 1. Si son 3+, usamos 2)
     const indicePrecioAplicar = Math.min(totalHijos - 1, 2);
     
-    // 3. Obtener esa configuración de precio (ej: "Registro 2") usando las opciones de H1
     const infoPrecioPrincipal = obtenerPrecioYConfiguracion(datos, hojaConfig, indicePrecioAplicar);
     
     Logger.log(`Total Hijos: ${totalHijos}. Índice de precio aplicado: ${indicePrecioAplicar}. Precio H1: ${infoPrecioPrincipal.precio}`);
 
     // 4. Aplicar ese precio al Inscripto Principal (datos)
-    datos.precio = infoPrecioPrincipal.precio;
-    datos.montoAPagar = infoPrecioPrincipal.montoAPagar;
-    datos.cantidadCuotas = infoPrecioPrincipal.cantidadCuotas;
+    datos.precio = infoPrecioPrincipal.precio; // Col AE (Precio Total)
+    datos.montoAPagar = infoPrecioPrincipal.montoAPagar; // Col AK ('' si es cuotas, $Total si es único)
+    datos.cantidadCuotas = infoPrecioPrincipal.cantidadCuotas; // Col AI
+    datos.valorCuota = infoPrecioPrincipal.valorCuota; // (NUEVO) Valor para AF, AG, AH
+    // (datos.subMetodoCuotas ya viene en el objeto 'datos')
     // =========================================================
 
-    // (Punto 10) Nuevos estados de pago (solo para el principal)
     if (datos.metodoPago === 'Pago Efectivo (Adm del Club)') {
       datos.estadoPago = "Pendiente (Efectivo)";
     } else if (datos.metodoPago === 'Transferencia') {
@@ -54,16 +47,12 @@ function paso1_registrarRegistro(datos) {
       datos.estadoPago = "Pendiente (Transferencia)";
     }
 
-    // (Punto 12) Si es un hermano completando, llamamos a una función diferente
     if (datos.esHermanoCompletando === true) {
-      // Esta función (actualizarDatosHermano) tiene la lógica
-      // para calcular el precio escalonado (ej: índice 1 o 2).
       const respuestaUpdate = actualizarDatosHermano(datos); 
       respuestaUpdate.datos = datos; 
       return respuestaUpdate;
     } else {
       
-      // 1. Registrar al inscripto principal
       const respuestaRegistro = registrarDatos(datos); 
       
       if (respuestaRegistro.status !== 'OK_REGISTRO') {
@@ -71,14 +60,12 @@ function paso1_registrarRegistro(datos) {
         return respuestaRegistro;
       }
 
-      // 2. Si hay hermanos, registrarlos
       const hermanosRegistrados = [];
       if (datos.hermanos && datos.hermanos.length > 0) {
         const idVinculo = `FAM_${respuestaRegistro.numeroDeTurno}`;
         respuestaRegistro.datos.vinculoPrincipal = idVinculo;
         
         try {
-          // Actualizar la fila del principal con el ID de vínculo
           const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
           const hojaRegistro = ss.getSheetByName(NOMBRE_HOJA_REGISTRO);
           const dniPrincipalLimpio = limpiarDNI(datos.dni); 
@@ -95,15 +82,8 @@ function paso1_registrarRegistro(datos) {
           Logger.log("Error al setear el ID de vínculo familiar: " + e.message);
         }
 
-        // Registrar a cada hermano
         datos.hermanos.forEach((hermano, i) => {
           try {
-            // =========================================================
-            // --- LÓGICA DE PRECIO (HERMANOS) ---
-            // =========================================================
-            // Los hermanos se pre-registran SIN precio, jornada o método de pago.
-            // Estos se calcularán cuando ellos completen sus datos.
-            
             const tipoInscripcionHermano = hermano.tipo || 'nuevo';
 
             const datosHermano = {
@@ -121,17 +101,17 @@ function paso1_registrarRegistro(datos) {
               dniResponsable1: datos.dniResponsable1,
               telAreaResp1: datos.telAreaResp1, 
               telNumResp1: datos.telNumResp1,
-              // Los datos de pago y precio se dejan VACÍOS
               metodoPago: "",
+              subMetodoCuotas: "", // (NUEVO) Dejar vacío
               jornada: "",
               esSocio: "",
               vinculoPrincipal: idVinculo,
               precio: 0,
               montoAPagar: 0,
               cantidadCuotas: 0,
+              valorCuota: 0, // (NUEVO)
               estadoPago: "Pendiente (Hermano/a)", // Estado clave
             };
-            // =========================================================
 
             const respHermano = registrarDatos(datosHermano);
             if (respHermano.status === 'OK_REGISTRO') {
@@ -163,10 +143,10 @@ function paso1_registrarRegistro(datos) {
 
 
 /**
-* (MODIFICADO)
-* - Lógica de precio "escalonada" (revertida).
-* - Calcula el precio para ESTE hermano basado en su índice (1, 2, etc.).
-* - YA NO actualiza los precios de otros miembros de la familia.
+* (MODIFICADO v15-CORREGIDO)
+* - No requiere cambios internos, ya que todas las
+* constantes (COL_DNI_INSCRIPTO, COL_MODO_PAGO_CUOTA, etc.)
+* se leen desde el nuevo `Constantes.js`.
 */
 function actualizarDatosHermano(datos) {
   const lock = LockService.getScriptLock();
@@ -193,20 +173,16 @@ function actualizarDatosHermano(datos) {
     // --- LÓGICA DE PRECIO ESCALONADO (HERMANO COMPLETANDO) ---
     // =========================================================
     
-    // 1. Encontrar el índice de ESTE hermano (0, 1, 2...)
-    // (Esta función vive en precios.gs)
     const indiceHijo = _obtenerIndiceHijo(hojaRegistro, fila);
-    
-    // 2. Calcular el precio usando los DATOS DE ESTE HERMANO y su ÍNDICE
     const infoPrecio = obtenerPrecioYConfiguracion(datos, hojaConfig, indiceHijo);
     
-    const precio = infoPrecio.precio;
-    const montoAPagar = infoPrecio.montoAPagar;
+    const precio = infoPrecio.precio; // Col AE (Precio Total)
+    const montoAPagar = infoPrecio.montoAPagar; // Col AK ('' si es cuotas, $Total si es único)
+    const valorCuota = infoPrecio.valorCuota; // Valor para AF, AG, AH
     
-    // 3. Sobrescribir cantidadCuotas en el objeto 'datos'
     datos.cantidadCuotas = infoPrecio.cantidadCuotas;
+    datos.valorCuota = valorCuota;
     
-    // 4. Actualizar el estado de pago si es cuotas
     if (datos.metodoPago === 'Pago en Cuotas') {
       datos.estadoPago = `Pendiente (${datos.cantidadCuotas} Cuotas)`;
     } else if (datos.metodoPago === 'Pago Efectivo (Adm del Club)') {
@@ -228,51 +204,58 @@ function actualizarDatosHermano(datos) {
       marcaNE = esPreventa ? "Normal (Pre-Venta)" : "Normal";
     }
 
-    // (Punto 6, 27) Actualizar la fila del hermano con los datos completos
-    // ESTO SOLO AFECTA A LA 'fila' DE ESTE HERMANO
-    hojaRegistro.getRange(fila, COL_MARCA_N_E_A).setValue(marcaNE);
-    hojaRegistro.getRange(fila, COL_EMAIL).setValue(datos.email);
-    hojaRegistro.getRange(fila, COL_OBRA_SOCIAL).setValue(datos.obraSocial);
-    hojaRegistro.getRange(fila, COL_COLEGIO_JARDIN).setValue(datos.colegioJardin);
-    hojaRegistro.getRange(fila, COL_ADULTO_RESPONSABLE_1).setValue(datos.adultoResponsable1);
-    hojaRegistro.getRange(fila, COL_DNI_RESPONSABLE_1).setValue(datos.dniResponsable1);
-    hojaRegistro.getRange(fila, COL_TEL_RESPONSABLE_1).setValue(telResp1);
-    hojaRegistro.getRange(fila, COL_ADULTO_RESPONSABLE_2).setValue(datos.adultoResponsable2);
-    hojaRegistro.getRange(fila, COL_TEL_RESPONSABLE_2).setValue(telResp2);
-    hojaRegistro.getRange(fila, COL_PERSONAS_AUTORIZADAS).setValue(datos.personasAutorizadas);
-    hojaRegistro.getRange(fila, COL_PRACTICA_DEPORTE).setValue(datos.practicaDeporte);
-    hojaRegistro.getRange(fila, COL_ESPECIFIQUE_DEPORTE).setValue(datos.especifiqueDeporte);
-    hojaRegistro.getRange(fila, COL_TIENE_ENFERMEDAD).setValue(datos.tieneEnfermedad);
-    hojaRegistro.getRange(fila, COL_ESPECIFIQUE_ENFERMEDAD).setValue(datos.especifiqueEnfermedad);
-    hojaRegistro.getRange(fila, COL_ES_ALERGICO).setValue(datos.esAlergico);
-    hojaRegistro.getRange(fila, COL_ESPECIFIQUE_ALERGIA).setValue(datos.especifiqueAlergia);
+    // (MODIFICADO v15-CORREGIDO) Todas las constantes apuntan a las nuevas columnas
+    hojaRegistro.getRange(fila, COL_MARCA_N_E_A).setValue(marcaNE); // C
+    hojaRegistro.getRange(fila, COL_EMAIL).setValue(datos.email); // E
+    hojaRegistro.getRange(fila, COL_OBRA_SOCIAL).setValue(datos.obraSocial); // K
+    hojaRegistro.getRange(fila, COL_COLEGIO_JARDIN).setValue(datos.colegioJardin); // L
+    hojaRegistro.getRange(fila, COL_ADULTO_RESPONSABLE_1).setValue(datos.adultoResponsable1); // M
+    hojaRegistro.getRange(fila, COL_DNI_RESPONSABLE_1).setValue(datos.dniResponsable1); // N
+    hojaRegistro.getRange(fila, COL_TEL_RESPONSABLE_1).setValue(telResp1); // O
+    hojaRegistro.getRange(fila, COL_ADULTO_RESPONSABLE_2).setValue(datos.adultoResponsable2); // P
+    hojaRegistro.getRange(fila, COL_TEL_RESPONSABLE_2).setValue(telResp2); // Q
+    hojaRegistro.getRange(fila, COL_PERSONAS_AUTORIZADAS).setValue(datos.personasAutorizadas); // R
+    hojaRegistro.getRange(fila, COL_PRACTICA_DEPORTE).setValue(datos.practicaDeporte); // S
+    hojaRegistro.getRange(fila, COL_ESPECIFIQUE_DEPORTE).setValue(datos.especifiqueDeporte); // T
+    hojaRegistro.getRange(fila, COL_TIENE_ENFERMEDAD).setValue(datos.tieneEnfermedad); // U
+    hojaRegistro.getRange(fila, COL_ESPECIFIQUE_ENFERMEDAD).setValue(datos.especifiqueEnfermedad); // V
+    hojaRegistro.getRange(fila, COL_ES_ALERGICO).setValue(datos.esAlergico); // W
+    hojaRegistro.getRange(fila, COL_ESPECIFIQUE_ALERGIA).setValue(datos.especifiqueAlergia); // X
 
-    // Fotos
+    // Fotos (Y, Z)
     const urlAptitud = datos.urlCertificadoAptitud || '';
     if (urlAptitud) {
       const valAptitud = String(urlAptitud).startsWith('=HYPERLINK') ? urlAptitud : `=HYPERLINK("${urlAptitud}"; "Aptitud_${dniBuscado}")`;
-      hojaRegistro.getRange(fila, COL_APTITUD_FISICA).setValue(valAptitud);
+      hojaRegistro.getRange(fila, COL_APTITUD_FISICA).setValue(valAptitud); // Y
     } else {
       hojaRegistro.getRange(fila, COL_APTITUD_FISICA).setValue('');
     }
     const urlFoto = datos.urlFotoCarnet || '';
     if (urlFoto) {
       const valFoto = String(urlFoto).startsWith('=HYPERLINK') ? urlFoto : `=HYPERLINK("${urlFoto}"; "Foto_${dniBuscado}")`;
-      hojaRegistro.getRange(fila, COL_FOTO_CARNET).setValue(valFoto);
+      hojaRegistro.getRange(fila, COL_FOTO_CARNET).setValue(valFoto); // Z
     } else {
       hojaRegistro.getRange(fila, COL_FOTO_CARNET).setValue('');
     }
 
-    // Actualizar datos de PAGO (Jornada, Socio, Precio) SÓLO EN ESTA FILA
-    hojaRegistro.getRange(fila, COL_JORNADA).setValue(datos.jornada);
-    hojaRegistro.getRange(fila, COL_SOCIO).setValue(datos.esSocio); 
-    hojaRegistro.getRange(fila, COL_METODO_PAGO).setValue(datos.metodoPago);
-    hojaRegistro.getRange(fila, COL_PRECIO).setValue(precio); // <- Asigna el precio escalonado
-    hojaRegistro.getRange(fila, COL_CANTIDAD_CUOTAS).setValue(parseInt(datos.cantidadCuotas) || 0);
-    hojaRegistro.getRange(fila, COL_ESTADO_PAGO).setValue(datos.estadoPago);
-    hojaRegistro.getRange(fila, COL_MONTO_A_PAGAR).setValue(montoAPagar);
+    // Actualizar datos de PAGO (AA en adelante)
+    hojaRegistro.getRange(fila, COL_JORNADA).setValue(datos.jornada); // AA
+    hojaRegistro.getRange(fila, COL_SOCIO).setValue(datos.esSocio); // AB
+    hojaRegistro.getRange(fila, COL_METODO_PAGO).setValue(datos.metodoPago); // AC
+    hojaRegistro.getRange(fila, COL_MODO_PAGO_CUOTA).setValue(datos.subMetodoCuotas || ''); // AD
+    hojaRegistro.getRange(fila, COL_PRECIO).setValue(precio); // AE (Precio Total)
+    hojaRegistro.getRange(fila, COL_CANTIDAD_CUOTAS).setValue(parseInt(datos.cantidadCuotas) || 0); // AI
+    hojaRegistro.getRange(fila, COL_ESTADO_PAGO).setValue(datos.estadoPago); // AJ
+    hojaRegistro.getRange(fila, COL_MONTO_A_PAGAR).setValue(montoAPagar); // AK (Vacío o Total)
     
-    // --- Cálculo de Grupo y Color ---
+    // Escribir el valor de cuota individual en AF, AG, AH
+    if (datos.cantidadCuotas === 3 && valorCuota > 0) {
+      hojaRegistro.getRange(fila, COL_CUOTA_1).setValue(valorCuota); // AF
+      hojaRegistro.getRange(fila, COL_CUOTA_2).setValue(valorCuota); // AG
+      hojaRegistro.getRange(fila, COL_CUOTA_3).setValue(valorCuota); // AH
+    }
+    
+    // --- Cálculo de Grupo y Color (H, I) ---
     const fechaNacHermano = hojaRegistro.getRange(fila, COL_FECHA_NACIMIENTO_REGISTRO).getValue();
     
     let fechaNacHermanoStr = "";
@@ -288,7 +271,7 @@ function actualizarDatosHermano(datos) {
 
     if (fechaNacHermanoStr) {
         const grupoAsignado = determinarGrupoPorFecha(fechaNacHermanoStr);
-        hojaRegistro.getRange(fila, COL_GRUPOS).setValue(grupoAsignado);
+        hojaRegistro.getRange(fila, COL_GRUPOS).setValue(grupoAsignado); // I
         aplicarColorGrupo(hojaRegistro, fila, grupoAsignado, hojaConfig);
     }
 
@@ -322,7 +305,8 @@ function paso2_procesarPostRegistro(datos, numeroDeTurno, hermanosRegistrados = 
     } else if (datos.metodoPago === 'Transferencia') {
       message = `¡Registro guardado con éxito!!.<br>Su método de pago es: <strong>${datos.metodoPago}</strong>. Realice la transferencia y vuelva a ingresar con su DNI para subir el comprobante.`;
     } else if (datos.metodoPago === 'Pago en Cuotas') {
-      message = `¡Registro guardado con éxito!!.<br>Su método de pago es: <strong>Pago en 3 Cuotas</strong>. Realice la transferencia de la primer cuota y vuelva a ingresar con su DNI para subir el comprobante.`;
+      const subMetodo = datos.subMetodoCuotas === "Efectivo" ? "Efectivo (Adm del Club)" : "Transferencia";
+      message = `¡Registro guardado con éxito!!.<br>Su método de pago es: <strong>Pago en 3 Cuotas (${subMetodo})</strong>. Realice el pago de la primer cuota y vuelva a ingresar con su DNI para subir el comprobante.`;
     } else {
       message = `¡Registro guardado con éxito!!. Contacte a la administración para coordinar el pago.`;
     }
