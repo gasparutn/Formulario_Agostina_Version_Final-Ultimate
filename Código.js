@@ -1,8 +1,10 @@
 /**
  * (MODIFICADO v17)
- * - ¡¡CORREGIDO!! Se añade la lógica de cálculo de precio (obtenerPrecioYConfiguracion)
- * dentro de 'paso1_registrarRegistro', que se había omitido en la refactorización anterior.
- * - Se añade el 'estadoPago' inicial basado en el cálculo de cuotas.
+ * - 'gestionarUsuarioYaRegistrado' ahora detecta si algún hermano
+ * tiene un pago de cuota individual (que no sea "Familiar").
+ * - Devuelve una nueva propiedad 'familiaTienePagosIndividuales'
+ * para que el cliente (js.html) pueda deshabilitar el
+ * checkbox de "Pago Familiar".
  */
 function doGet(e) {
   try {
@@ -1075,6 +1077,7 @@ function configurarColumnaEnviarEmailComoCheckboxDeshabilitada() {
 
 /**
  * Gestiona la lógica para un usuario que ya está registrado.
+ * (MODIFICADO v17)
  */
 function gestionarUsuarioYaRegistrado(
   ss,
@@ -1383,6 +1386,13 @@ function gestionarUsuarioYaRegistrado(
   );
 
   let algunoHermanoCompletos = false; 
+  // =========================================================
+  // --- (INICIO FIX v17) ---
+  // Detectar si algún hermano tiene pagos INDIVIDUALES
+  // =========================================================
+  let familiaTienePagosIndividuales = false;
+  // =========================================================
+
   if (tieneHermanos && idFamiliar) {
     try {
       const finder = hojaRegistro
@@ -1394,12 +1404,13 @@ function gestionarUsuarioYaRegistrado(
 
       for (const celda of filasHermanos) {
         const r = celda.getRow();
-        if (r === filaRegistro) continue; 
+        if (r === filaRegistro) continue; // No contarse a sí mismo
 
         const filaVals = hojaRegistro
             .getRange(r, 1, 1, hojaRegistro.getLastColumn())
             .getValues()[0];
         
+        // --- Lógica para 'algunoHermanoCompletos' (sin cambios) ---
         const ctot = filaVals[COL_COMPROBANTE_MANUAL_TOTAL_EXT - 1]; // AN
         const cc1 = filaVals[COL_COMPROBANTE_MANUAL_CUOTA1 - 1]; // AO
         const cc2 = filaVals[COL_COMPROBANTE_MANUAL_CUOTA2 - 1]; // AP
@@ -1421,12 +1432,28 @@ function gestionarUsuarioYaRegistrado(
           (cantidadReal > 0 && cnt >= cantidadReal) || Boolean(ctot);
         if (completos) {
           algunoHermanoCompletos = true;
-          break; 
+        }
+
+        // =========================================================
+        // --- (INICIO FIX v17) ---
+        // Nueva lógica para 'familiaTienePagosIndividuales'
+        // =========================================================
+        const estadoPagoHermano = String(filaVals[COL_ESTADO_PAGO - 1] || ""); // AJ
+        // Si el estado tiene "Pagada" PERO NO "Familiar", es un pago individual
+        if (estadoPagoHermano.includes("Pagada") && !estadoPagoHermano.includes("Familiar")) {
+           familiaTienePagosIndividuales = true;
+        }
+        // =========================================================
+
+        // Si ya encontramos ambas condiciones, podemos salir del bucle
+        if (algunoHermanoCompletos && familiaTienePagosIndividuales) {
+          break;
         }
       }
     } catch (e) {
-      Logger.log("Error calculando hermanos comprobantes completos: " + e.toString());
+      Logger.log("Error calculando estados de hermanos: " + e.toString());
       algunoHermanoCompletos = false;
+      familiaTienePagosIndividuales = false; // Asumir falso en caso de error
     }
   }
 
@@ -1439,6 +1466,10 @@ function gestionarUsuarioYaRegistrado(
     datos: datosParaEdicion,
     tieneHermanos: tieneHermanos,
     algunoHermanoConComprobantesCompletos: algunoHermanoCompletos,
+    // =========================================================
+    // --- (INICIO FIX v17) ---
+    familiaTienePagosIndividuales: familiaTienePagosIndividuales, // Nueva propiedad
+    // =========================================================
     cantidadCuotasRegistrada: cantidadCuotasRegistrada,
     cuotasPagadas: cuotasPagadasFinal,
     cuotasPendientes: cuotasPendientesByComp,
