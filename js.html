@@ -3,7 +3,7 @@
   // =========================================================
   // ARCHIVO: js.html
   // Lógica Principal, Handlers del Servidor y Orquestación
-  // (Versión final con modal de "Inscripción Completa")
+  // (MODIFICADO) Lógica de subida de comprobantes (Importe y SubMetodo)
   // =========================================================
 
   const APP_URL = GLOBAL_APP_URL;
@@ -182,6 +182,8 @@
   * - Deshabilita los checkboxes de cuotas ya pagadas.
   * - Corrige bug 'undefined undefined' usando `response.datos.nombre` y `apellido`.
   * - Muestra la casilla "familiar" SIEMPRE si `tieneHermanos` es true.
+  * - (NUEVO) Añadido input "Importe total del comprobante".
+  * - (NUEVO) Movido el selector "subMetodoCuotas" a esta sección.
   */
   function handleValidationSuccess(response) {
     
@@ -321,14 +323,37 @@
 
         // (Datos Pagador y Checkbox Familiar)
         const pagoFamiliarDisabledAttr = (response.algunoHermanoConComprobantesCompletos === true) ? 'disabled title="No puede marcar Pago Familiar: al menos un hermano ya tiene todos los comprobantes."' : '';
-        html += `<div id="datos-externo-container"><label for="externo-nombre-pagador">Nombre y Apellido (del Adulto Pagador):</label><input type="text" id="externo-nombre-pagador" placeholder="Nombre Apellido (Quien paga)"><label for="externo-dni-pagador">DNI (del Adulto Pagador):</label><input type="tel" id="externo-dni-pagador" placeholder="DNI (Quien paga)" pattern="[0-9]{8}" inputmode="numeric" maxlength="8" title="El DNI debe tener exactamente 8 dígitos numéricos.">
+        
+        // --- (INICIO MODIFICACIÓN) ---
+        // Añadido "Importe total del comprobante"
+        // Movido "sub-metodo-cuotas-container" aquí
+        // Renombrados labels de "sub-metodo-cuotas-container"
+        html += `<div id="datos-externo-container">
+          <label for="externo-nombre-pagador">Nombre y Apellido (del Adulto Pagador):</label>
+          <input type="text" id="externo-nombre-pagador" placeholder="Nombre Apellido (Quien paga)">
+          
+          <label for="externo-dni-pagador">DNI (del Adulto Pagador):</label>
+          <input type="tel" id="externo-dni-pagador" placeholder="DNI (Quien paga)" pattern="[0-9]{8}" inputmode="numeric" maxlength="8" title="El DNI debe tener exactamente 8 dígitos numéricos.">
+
+          <label for="externo-importe-comprobante">Importe total del comprobante:</label>
+          <input type="number" id="externo-importe-comprobante" placeholder="Ej: 50000.00" inputmode="decimal" step="0.01" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em;">
+
+          <div id="sub-metodo-cuotas-container" style="display: none; margin-top: 15px;">
+            <label for="subMetodoCuotas">Indique cómo pagó la cuota:</label>
+            <select id="subMetodoCuotas" name="subMetodoCuotas">
+              <option value="">-- Elija una opción de pago --</option>
+              <option value="Efectivo">a) Pagué cuota en efectivo en Adm. del Club.</option>
+              <option value="Transferencia">b) Pagué con Transferencia.</option>
+            </select>
+          </div>
       
-      <div id="pago-familiar-container" style="display: ${response.tieneHermanos ? 'flex' : 'none'};">
-        <input type="checkbox" id="es-pago-familiar-check" ${pagoFamiliarDisabledAttr}>
-        <label for="es-pago-familiar-check">Tilde la opción si el comprobante elegido incluye a los/as (hermanos/as)?</label>
-      </div>
+          <div id="pago-familiar-container" style="display: ${response.tieneHermanos ? 'flex' : 'none'};">
+            <input type="checkbox" id="es-pago-familiar-check" ${pagoFamiliarDisabledAttr}>
+            <label for="es-pago-familiar-check">Tilde la opción si el comprobante elegido incluye a los/as (hermanos/as)?</label>
+          </div>
       
       </div>`;
+        // --- (FIN MODIFICACIÓN) ---
 
         // (Botón de Subida)
         html += `<div id="upload-file-container"><label for="comprobante-manual-upload" class="file-input-label" style="background-color: #7f8c8d;">Seleccionar Archivo para Subir</label><input type="file" id="comprobante-manual-upload" accept="image/jpeg, image/png, application/pdf"><div style="display: flex; align-items: center; margin-bottom: 15px;"><span id="comprobante-manual-name" class="file-name" style="margin-bottom: 0;">Ningún archivo seleccionado</span><button type="button" id="btn-clear-comprobante" class="btn-remover" style="display:none; margin-top: 0; margin-left: 10px;">X</button></div><button type="button" id="btn-submit-comprobante-manual">Subir Comprobante</button><div class="loader" id="loader-comprobante" style="display: none; margin-top: 15px;"><div class="spinner"></div><p>Subiendo comprobante...</p></div></div><hr style="margin-top:20px;"><button type="button" id="btn-finalizar-upload" class="btn-final-volver">Finalizar Carga (Volver)</button></div>`;
@@ -365,6 +390,9 @@
         const fileInputComprobante = document.getElementById('comprobante-manual-upload');
         const btnClearComprobante = document.getElementById('btn-clear-comprobante');
         const pagoFamiliarContainer = document.getElementById('pago-familiar-container');
+        
+        // (NUEVO) Obtener el contenedor del sub-método
+        const subMetodoContainer = document.getElementById('sub-metodo-cuotas-container');
 
         const tipoComprobanteSelect = document.getElementById('tipo-comprobante-select');
         if (tipoComprobanteSelect) {
@@ -373,6 +401,11 @@
             datosExternoContainer.style.display = tipo ? 'block' : 'none';
             uploadFileContainer.style.display = tipo ? 'block' : 'none';
             cuotaSelectorContainer.style.display = tipo === 'mp_cuotas_group' ? 'block' : 'none';
+            
+            // (NUEVO) Mostrar el sub-método solo si es "Pago en Cuotas"
+            if (subMetodoContainer) {
+              subMetodoContainer.style.display = tipo === 'mp_cuotas_group' ? 'block' : 'none';
+            }
 
             if (pagoFamiliarContainer) {
               pagoFamiliarContainer.style.display = response.tieneHermanos ? 'flex' : 'none';
@@ -431,6 +464,13 @@
             const nombrePagador = document.getElementById('externo-nombre-pagador').value;
             const dniPagadorInput = document.getElementById('externo-dni-pagador');
             const dniPagador = dniPagadorInput.value;
+            
+            // (NUEVO) Obtener y validar Importe y SubMetodo
+            const importeComprobanteInput = document.getElementById('externo-importe-comprobante');
+            const importeComprobante = importeComprobanteInput.value;
+            const subMetodoCuotasInput = document.getElementById('subMetodoCuotas');
+            const subMetodoCuotas = subMetodoCuotasInput.value;
+
             if (!nombrePagador || !dniPagador) {
               loaderComprobante.innerHTML = `<div class="mensaje error" style="margin-bottom:0;">Por favor, complete el Nombre/Apellido y DNI del Adulto Pagador.</div>`;
               loaderComprobante.style.display = 'block';
@@ -442,7 +482,31 @@
               dniPagadorInput.focus();
               return;
             }
-            const datosExtras = { nombrePagador: nombrePagador, dniPagador: dniPagador };
+            
+            // (NUEVA VALIDACIÓN)
+            if (!importeComprobante || parseFloat(importeComprobante) <= 0) {
+               loaderComprobante.innerHTML = `<div class="mensaje error" style="margin-bottom:0;">Por favor, complete el 'Importe total del comprobante' con un valor numérico válido.</div>`;
+               loaderComprobante.style.display = 'block';
+               importeComprobanteInput.focus();
+               return;
+            }
+            
+            // (NUEVA VALIDACIÓN)
+            if (tipoComprobante === 'mp_cuotas_group' && !subMetodoCuotas) {
+               loaderComprobante.innerHTML = `<div class="mensaje error" style="margin-bottom:0;">Por favor, indique cómo pagó la cuota (Efectivo o Transferencia).</div>`;
+               loaderComprobante.style.display = 'block';
+               subMetodoCuotasInput.focus();
+               return;
+            }
+            
+            // (NUEVO) Añadir al objeto datosExtras
+            const datosExtras = { 
+              nombrePagador: nombrePagador, 
+              dniPagador: dniPagador, 
+              importeComprobante: importeComprobante, 
+              subMetodoCuotas: subMetodoCuotas 
+            };
+            
             const dni = document.getElementById('dni-input').value;
             const esPagoFamiliar = document.getElementById('es-pago-familiar-check').checked;
             if (!file) {
@@ -1034,6 +1098,12 @@
         const uploadFileContainer = document.getElementById('upload-file-container');
         const btnClearComprobante = document.getElementById('btn-clear-comprobante');
         const pagoFamiliarContainer = document.getElementById('pago-familiar-container');
+        
+        // (NUEVO) Limpiar los campos nuevos
+        const importeInput = document.getElementById('externo-importe-comprobante');
+        const subMetodoInput = document.getElementById('subMetodoCuotas');
+        const subMetodoContainer = document.getElementById('sub-metodo-cuotas-container');
+
 
         if (fileInputComprobante) fileInputComprobante.value = '';
         if (document.getElementById('comprobante-manual-name')) document.getElementById('comprobante-manual-name').textContent = 'Ningún archivo seleccionado';
@@ -1045,6 +1115,12 @@
         if (btnClearComprobante) btnClearComprobante.style.display = 'none';
         if (document.getElementById('externo-nombre-pagador')) document.getElementById('externo-nombre-pagador').value = '';
         if (document.getElementById('externo-dni-pagador')) document.getElementById('externo-dni-pagador').value = '';
+
+        // (NUEVO) Resetear campos nuevos
+        if (importeInput) importeInput.value = '';
+        if (subMetodoInput) subMetodoInput.value = '';
+        if (subMetodoContainer) subMetodoContainer.style.display = 'none';
+
 
         // (NUEVO) Resetear checkboxes de cuotas
         document.querySelectorAll('.cuota-checkbox-item input:checked').forEach(chk => chk.checked = false);

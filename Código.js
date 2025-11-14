@@ -48,87 +48,6 @@ function doPost(e) {
   return ContentService.createTextOutput("OK");
 }
 
-// =========================================================
-// --- FUNCIÓN AÑADIDA (SOLICITUD DEL USUARIO) ---
-// Esta es la función que proporcionaste, determina el grupo por fecha de corte.
-// =========================================================
-function obtenerGrupoPorFechaNacimiento(fechaNacStr) {
-  if (!fechaNacStr) return "Sin Fecha";
-
-  try {
-    const fechaNac = new Date(fechaNacStr + "T00:00:00Z");
-    const mesCorte = 6; // Julio (0-11)
-    const diaCorte = 30;
-
-    if (fechaNac >= new Date(Date.UTC(2022, mesCorte, diaCorte)) && fechaNac < new Date(Date.UTC(2023, mesCorte, diaCorte))) return "Grupo 3 años";
-    if (fechaNac >= new Date(Date.UTC(2021, mesCorte, diaCorte)) && fechaNac < new Date(Date.UTC(2022, mesCorte, diaCorte))) return "Grupo 4 años";
-    if (fechaNac >= new Date(Date.UTC(2020, mesCorte, diaCorte)) && fechaNac < new Date(Date.UTC(2021, mesCorte, diaCorte))) return "Grupo 5 años";
-    if (fechaNac >= new Date(Date.UTC(2019, mesCorte, diaCorte)) && fechaNac < new Date(Date.UTC(2020, mesCorte, diaCorte))) return "Grupo 6 años";
-    if (fechaNac >= new Date(Date.UTC(2018, mesCorte, diaCorte)) && fechaNac < new Date(Date.UTC(2019, mesCorte, diaCorte))) return "Grupo 7 años";
-    if (fechaNac >= new Date(Date.UTC(2017, mesCorte, diaCorte)) && fechaNac < new Date(Date.UTC(2018, mesCorte, diaCorte))) return "Grupo 8 años";
-    if (fechaNac >= new Date(Date.UTC(2016, mesCorte, diaCorte)) && fechaNac < new Date(Date.UTC(2017, mesCorte, diaCorte))) return "Grupo 9 años";
-    if (fechaNac >= new Date(Date.UTC(2015, mesCorte, diaCorte)) && fechaNac < new Date(Date.UTC(2016, mesCorte, diaCorte))) return "Grupo 10 años";
-    if (fechaNac >= new Date(Date.UTC(2014, mesCorte, diaCorte)) && fechaNac < new Date(Date.UTC(2015, mesCorte, diaCorte))) return "Grupo 11 años";
-    if (fechaNac >= new Date(Date.UTC(2013, mesCorte, diaCorte)) && fechaNac < new Date(Date.UTC(2014, mesCorte, diaCorte))) return "Grupo 12 años";
-    if (fechaNac >= new Date(Date.UTC(2012, mesCorte, diaCorte)) && fechaNac < new Date(Date.UTC(2013, mesCorte, diaCorte))) return "Grupo 13 años";
-    if (fechaNac >= new Date(Date.UTC(2011, mesCorte, diaCorte)) && fechaNac < new Date(Date.UTC(2012, mesCorte, diaCorte))) return "Grupo 14 años";
-    if (fechaNac >= new Date(Date.UTC(2010, mesCorte, diaCorte)) && fechaNac < new Date(Date.UTC(2011, mesCorte, diaCorte))) return "Grupo 15 años";
-
-    return "Fuera de rango";
-
-  } catch (e) {
-    Logger.log("Error al parsear fecha en obtenerGrupoPorFechaNacimiento: " + fechaNacStr + " | Error: " + e.message);
-    return "Error Fecha";
-  }
-}
-// =========================================================
-// --- FIN FUNCIÓN AÑADIDA ---
-// =========================================================
-
-// =========================================================
-// --- FUNCIÓN AÑADIDA Y MODIFICADA (Para pintar celdas) ---
-// Se trae de 'CalculaEdadGrupoColor.js' y se modifica 
-// para que NO convierta a mayúsculas.
-// =========================================================
-/**
- * Aplica el color de fondo a la celda del grupo basado en la hoja de Configuración.
- * @param {GoogleAppsScript.Spreadsheet.Sheet} hoja - La hoja de "Registros".
- * @param {number} fila - El número de fila a colorear.
- * @param {string} textoGrupo - El texto del grupo (ej. "Grupo 5 años").
- * @param {GoogleAppsScript.Spreadsheet.Sheet} hojaConfig - La hoja de "Config".
- */
-function aplicarColorGrupo(hoja, fila, textoGrupo, hojaConfig) {
-  try {
-    const rangoGrupos = hojaConfig.getRange("A30:B41");
-    const valoresGrupos = rangoGrupos.getValues();
-    const coloresGrupos = rangoGrupos.getBackgrounds();
-
-    for (let i = 0; i < valoresGrupos.length; i++) {
-      
-      // =========================================================
-      // --- ¡¡AQUÍ ESTÁ LA CORRECCIÓN!! ---
-      // Comparamos el texto exacto (ej. "Grupo 3 años") 
-      // sin forzar mayúsculas.
-      // =========================================================
-      if (valoresGrupos[i][0].toString().trim() == textoGrupo.toString().trim()) {
-        const color = coloresGrupos[i][1]; 
-        
-        hoja.getRange(fila, COL_GRUPOS).setBackground(color);
-        return;
-      }
-    }
-    // Si llega aquí, es porque no encontró una coincidencia de texto
-    Logger.log(`No se encontró color para el grupo: "${textoGrupo}" en la hoja Config!A30:A41`);
-
-  } catch (e) {
-    Logger.log(`Error al aplicar color para el grupo ${textoGrupo} en fila ${fila}: ${e.message}`);
-  }
-}
-// =========================================================
-// --- FIN FUNCIÓN MODIFICADA ---
-// =========================================================
-
-
 /**
 * (MODIFICADO v15-CORREGIDO)
 * - Se actualiza el número de columnas de 48 a 47 en `registrarDatos`.
@@ -286,13 +205,7 @@ function registrarDatos(datos, testSheetName) {
         try {
           const fechaNacStr = datos.fechaNacimiento;
           if (fechaNacStr) {
-            // =========================================================
-            // --- ¡¡MODIFICACIÓN #1!! ---
-            // Se llama a la nueva función del usuario.
-            // =========================================================
-            const grupo = obtenerGrupoPorFechaNacimiento(fechaNacStr);
-            // =========================================================
-            
+            const grupo = determinarGrupoPorFecha(fechaNacStr);
             hojaRegistro.getRange(filaExistente, COL_GRUPOS).setValue(grupo); // I
             aplicarColorGrupo(hojaRegistro, filaExistente, grupo, hojaConfig);
             Logger.log(`Grupo [${grupo}] y color RE-aplicados para DNI ${dniLimpio} en fila ${filaExistente}.`);
@@ -429,13 +342,7 @@ function registrarDatos(datos, testSheetName) {
     try {
       const fechaNacStr = datos.fechaNacimiento;
       if (fechaNacStr) {
-        // =========================================================
-        // --- ¡¡MODIFICACIÓN #2!! ---
-        // Se llama a la nueva función del usuario.
-        // =========================================================
-        const grupo = obtenerGrupoPorFechaNacimiento(fechaNacStr);
-        // =========================================================
-
+        const grupo = determinarGrupoPorFecha(fechaNacStr);
         hojaRegistro.getRange(nuevaFila, COL_GRUPOS).setValue(grupo); // I
         aplicarColorGrupo(hojaRegistro, nuevaFila, grupo, hojaConfig);
       } else {
@@ -864,9 +771,9 @@ function validarAcceso(dni, tipoInscripto) {
 
 /**
  * (MODIFICADO v15-CORREGIDO)
- * - Esta función no requiere cambios internos, ya que todas las
- * lecturas de columnas (COL_ESTADO_PAGO, COL_CANTIDAD_CUOTAS, etc.)
- * se actualizan automáticamente desde `Constantes.js`.
+ * - Esta función ahora usa la constante COL_ENVIAR_EMAIL_MANUAL
+ * que se actualiza automáticamente desde Constantes.js (ahora es 45, AS).
+ * También se ajusta la descripción de la protección.
  */
 function configurarColumnaEnviarEmailComoCheckboxDeshabilitada() {
   try {
@@ -950,12 +857,6 @@ function gestionarUsuarioYaRegistrado(
     return { status: 'ERROR', message: 'Este DNI ya está registrado como "Inscripto Anterior". Por favor, seleccione esa opción y valide de nuevo.' };
   }
   // ... (resto de validaciones de tipo) ...
-  if (estadoInscriptoTrim.includes('nuevo') && tipoInscripto !== 'nuevo' && tipoInscripto !== 'hermano/a') {
-    return { status: 'ERROR', message: 'Este DNI ya está registrado como "Nuevo Inscripto". Por favor, seleccione esa opción y valide de nuevo.' };
-  }
-  if (estadoInscriptoTrim.includes('pre-venta') && tipoInscripto !== 'preventa' && tipoInscripto !== 'hermano/a') {
-    return { status: 'ERROR', message: 'Este DNI está registrado como "Pre-Venta". Por favor, seleccione esa opción y valide de nuevo.' };
-  }
 
 
   // (Preparar datos para la función de Editar)

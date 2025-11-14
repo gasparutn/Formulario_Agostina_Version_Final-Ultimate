@@ -4,6 +4,7 @@
 // (MODIFICADO) Lógica de validación de hermanos
 // (MODIFICADO) Corrección bug submit
 // (MODIFICADO) Corrección bug cuelgue en redirección
+// (MODIFICADO) Eliminada validación de subMetodoCuotas del submit
 // =========================================================
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -50,7 +51,7 @@ document.getElementById('metodoPago').addEventListener('change', () => {
 // toggleCantidadCuotas(); // Sigue eliminada
 toggleTransferenciaInfo();
 toggleCuotasInfo();
-toggleSubMetodoCuotas(); // <-- AÑADIDO
+// toggleSubMetodoCuotas(); // <-- (MODIFICADO) ELIMINADO de aquí, ya no está en el form
 // toggleCuotasTransferenciaInfo(); // <-- (PUNTO 33) ELIMINADO
 });
 // (Punto 28) Restaurado: Copiar Alias
@@ -153,6 +154,7 @@ document.getElementById('btn-modal-validar-hermano').addEventListener('click', f
 // =========================================================
 // (CORRECCIÓN 8 - LISTENER DE SUBMIT)
 // (*** CORREGIDO EL BUG DEL SUBMIT ***)
+// (*** MODIFICADO: Eliminada validación de subMetodoCuotas ***)
 // =========================================================
 document.getElementById('registroForm').addEventListener('submit', function(e) {
 e.preventDefault();
@@ -257,12 +259,12 @@ if (fechaNacPrincipal < "2010-01-01" || fechaNacPrincipal > "2023-12-31") {
 return validationFail('Error: La fecha de nacimiento debe estar entre 01/01/2010 y 31/12/2023.', fechaNacInput);
 }
 
-// --- (NUEVA VALIDACIÓN DE SUB-MENÚ DE CUOTAS) ---
-const metodoPagoSeleccionado = document.getElementById('metodoPago').value;
-const subMetodoInput = document.getElementById('subMetodoCuotas');
-if (metodoPagoSeleccionado === 'Pago en Cuotas' && !subMetodoInput.value) {
-  return validationFail('Error: Debe seleccionar cómo pagará las cuotas (Efectivo o Transferencia).', subMetodoInput);
-}
+// --- (VALIDACIÓN DE SUB-MENÚ DE CUOTAS ELIMINADA) ---
+// const metodoPagoSeleccionado = document.getElementById('metodoPago').value;
+// const subMetodoInput = document.getElementById('subMetodoCuotas');
+// if (metodoPagoSeleccionado === 'Pago en Cuotas' && !subMetodoInput.value) {
+//   return validationFail('Error: Debe seleccionar cómo pagará las cuotas (Efectivo o Transferencia).', subMetodoInput);
+// }
 
 
 loader.querySelector('p').textContent = 'Recolectando datos...';
@@ -289,6 +291,8 @@ formDataObject[key] = el.value;
 if (formDataObject['metodoPago'] === 'Pago en Cuotas') {
 formDataObject['cantidadCuotas'] = "3";
 }
+// (MODIFICADO) 'subMetodoCuotas' ya no se recolecta aquí
+// formDataObject['subMetodoCuotas'] será 'undefined' y eso es correcto.
 
 // --- 5. Recolección de Datos Faltantes ---
 formDataObject.tipoInscripto = document.getElementById('tipoInscripto').value;
