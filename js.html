@@ -324,7 +324,7 @@
         // (Datos Pagador y Checkbox Familiar)
         const pagoFamiliarDisabledAttr = (response.algunoHermanoConComprobantesCompletos === true) ? 'disabled title="No puede marcar Pago Familiar: al menos un hermano ya tiene todos los comprobantes."' : '';
         
-        // --- (INICIO MODIFICACIÓN) ---
+        // --- (INICIO MODIFICACIÓN v16) ---
         // Añadido "Importe total del comprobante"
         // Movido "sub-metodo-cuotas-container" aquí
         // Renombrados labels de "sub-metodo-cuotas-container"
@@ -353,10 +353,10 @@
           </div>
       
       </div>`;
-        // --- (FIN MODIFICACIÓN) ---
+        // --- (FIN MODIFICACIÓN v16) ---
 
         // (Botón de Subida)
-        html += `<div id="upload-file-container"><label for="comprobante-manual-upload" class="file-input-label" style="background-color: #7f8c8d;">Seleccionar Archivo para Subir</label><input type="file" id="comprobante-manual-upload" accept="image/jpeg, image/png, application/pdf"><div style="display: flex; align-items: center; margin-bottom: 15px;"><span id="comprobante-manual-name" class="file-name" style="margin-bottom: 0;">Ningún archivo seleccionado</span><button type="button" id="btn-clear-comprobante" class="btn-remover" style="display:none; margin-top: 0; margin-left: 10px;">X</button></div><button type="button" id="btn-submit-comprobante-manual">Subir Comprobante</button><div class="loader" id="loader-comprobante" style="display: none; margin-top: 15px;"><div class="spinner"></div><p>Subiendo comprobante...</p></div></div><hr style="margin-top:20px;"><button type="button" id="btn-finalizar-upload" class="btn-final-volver">Finalizar Carga (Volver)</button></div>`;
+        html += `<div id="upload-file-container"><label for="comprobante-manual-upload" class="file-input-label" style="background-color: #7f8c8d;">Seleccionar Archivo para Subir</label><input type="file" id="comprobante-manual-upload" accept="image/jpeg, image/png, application/pdf"><div style="display: flex; align-items: center; margin-bottom: 15px;"><span id="comprobante-manual-name" class="file-name" style="margin-bottom: 0;">Ningún archivo seleccionado</span><button type="button" id="btn-clear-comprobante" class="btn-remover" style="display:none; margin-top: 0; margin-left: 10px;">X</button></div><button type="button" id="btn-submit-comprobante-manual">Subir Comprobante</button><div class="loader" id="loader-comprobante" style="display: none; margin-top: 15px;"><div class="spinner"></div><p>Subiendo comprobante...</p></div><hr style="margin-top:20px;"><button type="button" id="btn-finalizar-upload" class="btn-final-volver">Finalizar Carga (Volver)</button></div>`;
 
       } else { // Si está pagado Y no adeuda aptitud
         if (response.adeudaAptitud !== true) {
@@ -465,7 +465,7 @@
             const dniPagadorInput = document.getElementById('externo-dni-pagador');
             const dniPagador = dniPagadorInput.value;
             
-            // (NUEVO) Obtener y validar Importe y SubMetodo
+            // (NUEVO v16) Obtener y validar Importe y SubMetodo
             const importeComprobanteInput = document.getElementById('externo-importe-comprobante');
             const importeComprobante = importeComprobanteInput.value;
             const subMetodoCuotasInput = document.getElementById('subMetodoCuotas');
@@ -483,7 +483,7 @@
               return;
             }
             
-            // (NUEVA VALIDACIÓN)
+            // (NUEVA VALIDACIÓN v16)
             if (!importeComprobante || parseFloat(importeComprobante) <= 0) {
                loaderComprobante.innerHTML = `<div class="mensaje error" style="margin-bottom:0;">Por favor, complete el 'Importe total del comprobante' con un valor numérico válido.</div>`;
                loaderComprobante.style.display = 'block';
@@ -491,7 +491,7 @@
                return;
             }
             
-            // (NUEVA VALIDACIÓN)
+            // (NUEVA VALIDACIÓN v16)
             if (tipoComprobante === 'mp_cuotas_group' && !subMetodoCuotas) {
                loaderComprobante.innerHTML = `<div class="mensaje error" style="margin-bottom:0;">Por favor, indique cómo pagó la cuota (Efectivo o Transferencia).</div>`;
                loaderComprobante.style.display = 'block';
@@ -499,7 +499,7 @@
                return;
             }
             
-            // (NUEVO) Añadir al objeto datosExtras
+            // (NUEVO v16) Añadir al objeto datosExtras
             const datosExtras = { 
               nombrePagador: nombrePagador, 
               dniPagador: dniPagador, 
@@ -1099,7 +1099,7 @@
         const btnClearComprobante = document.getElementById('btn-clear-comprobante');
         const pagoFamiliarContainer = document.getElementById('pago-familiar-container');
         
-        // (NUEVO) Limpiar los campos nuevos
+        // (NUEVO v16) Limpiar los campos nuevos
         const importeInput = document.getElementById('externo-importe-comprobante');
         const subMetodoInput = document.getElementById('subMetodoCuotas');
         const subMetodoContainer = document.getElementById('sub-metodo-cuotas-container');
@@ -1116,7 +1116,7 @@
         if (document.getElementById('externo-nombre-pagador')) document.getElementById('externo-nombre-pagador').value = '';
         if (document.getElementById('externo-dni-pagador')) document.getElementById('externo-dni-pagador').value = '';
 
-        // (NUEVO) Resetear campos nuevos
+        // (NUEVO v16) Resetear campos nuevos
         if (importeInput) importeInput.value = '';
         if (subMetodoInput) subMetodoInput.value = '';
         if (subMetodoContainer) subMetodoContainer.style.display = 'none';
