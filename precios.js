@@ -156,10 +156,6 @@ return {
 /**
  * Función helper para encontrar el índice de un hermano (0, 1, 2+)
  * cuando está actualizando sus datos.
- *
- * @param {GoogleAppsScript.Spreadsheet.Sheet} hojaRegistro - La hoja de "Registros".
- * @param {number} fila - La fila del DNI que se está actualizando.
- * @returns {number} - El índice del hijo (0, 1, 2, etc.).
  */
 function _obtenerIndiceHijo(hojaRegistro, fila) {
   try {
