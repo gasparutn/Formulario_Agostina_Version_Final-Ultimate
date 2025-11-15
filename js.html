@@ -1,6 +1,4 @@
-
 <script>
-  
   // =========================================================
   // ARCHIVO: js.html
   // Lógica Principal, Handlers del Servidor y Orquestación
@@ -186,31 +184,6 @@
   */
   function handleValidationSuccess(response) {
     
-    // =========================================================
-    // --- ¡INICIO DE LA MODIFICACIÓN (MODAL COMPLETO)! ---
-    // =========================================================
-    // Si el usuario valida y ya tiene todo (pagos Y aptitud),
-    // mostrar el modal de éxito y no hacer nada más.
-    if (response.status === 'REGISTRO_ENCONTRADO' && 
-        response.comprobantesCompletos === true && 
-        response.adeudaAptitud === false) {
-      
-      const nombreCompleto = (response.datos && response.datos.nombre) ? `${response.datos.nombre} ${response.datos.apellido}` : 'Usuario';
-      
-      // Ocultar el loader de validación por si acaso
-      document.getElementById('loader-validacion').style.display = 'none';
-      
-      // Llamar a la nueva función del modal (de js2.html)
-      mostrarModalCompleto(
-        `¡Felicidades, ${nombreCompleto}!`, 
-        'Has completado exitosamente todo el proceso de inscripción. Tu cupo está confirmado.'
-      );
-      
-      return; // Detener la ejecución de esta función
-    }
-    // =========================================================
-    // --- FIN DE LA MODIFICACIÓN ---
-    // =========================================================
 
     document.getElementById('btn-validar').disabled = false;
     document.getElementById('loader-validacion').style.display = 'none';
@@ -232,39 +205,51 @@
 
       // --- (INICIO CORRECCIÓN MENSAJES) ---
       // (Arregla "undefined undefined")
-      const nombreCompleto = (response.datos && response.datos.nombre) ? `${response.datos.nombre} ${response.datos.apellido}` : 'Usuario';
+     const nombreCompleto = (response.datos && response.datos.nombre) ? `${response.datos.nombre} ${response.datos.apellido}` : 'Usuario';
 
-      // (NOTA: El chequeo de 100% completo se movió al inicio de esta función)
+// CASO 1: 100% COMPLETO (Pagos Y Aptitud)
+// Esta es la nueva lógica que pediste
+if (response.comprobantesCompletos === true && response.adeudaAptitud === false) {
+    html += `<div class="mensaje exito" style="margin-bottom:10px; text-align:center;">
+              <strong>¡Felicidades, ${nombreCompleto}!</strong>
+              <br>Has completado exitosamente todo el proceso de inscripción!!!
+            </div>`;
+}
+// CASO 2: Pagos completos, PERO AÚN DEBE APTITUD
+else if (response.comprobantesCompletos === true && response.adeudaAptitud === true) {
+     html += `<div class="mensaje exito" style="margin-bottom:10px; text-align:left;">
+               <strong>✅ ¡Pagos Completos! (${nombreCompleto})</strong>
+               <br>Ya has completado todos los pagos. Solo falta subir el Certificado de Aptitud Física.
+             </div>`;
+}
+// CASO 3: Aún debe pagos (y es "Pago en Cuotas")
+else if (response.metodoPago === 'Pago en Cuotas') {
+  const cantCuotas = response.cantidadCuotasRegistrada || 3;
+  const pendientes = typeof response.cuotasPendientes === 'number' ? response.cuotasPendientes : 0;
 
-      // Si está pagado (con los nuevos estados)
-      if (response.message.includes('PAGADA') || response.message.includes('PAGADO') || response.message.includes('Pago Total') || response.message.includes('Pago total')) {
-        html += `<div class="mensaje exito" style="margin-bottom:10px; text-align:left;"><strong>${response.message}</strong></div>`;
-      }
-      // Si está pendiente (o en revisión) y es "Pago en Cuotas"
-      else if (response.metodoPago === 'Pago en Cuotas') {
-        const cantCuotas = response.cantidadCuotasRegistrada || 3;
-        const pendientes = typeof response.cuotasPendientes === 'number' ? response.cuotasPendientes : 0;
+  // (CASO 3a: Es "Pago en Cuotas" pero pagó todo y está "en revisión". Muestra el msg de la screenshot)
+  // Este es el bloque que estabas viendo
+  if (pendientes === 0) {
+    html += `<div class="mensaje aviso" style="margin-bottom:10px; text-align:justify;"><strong>"Recuerde subir comprobante de transferencia o comprobante de pago efectivo otorgado por el CLUB, validando nuevamente por el formulario con el dni del inscripto/a". Cualquier duda que surja no dude en comunicarse con la Administración. Muchas Gracias!!</strong></div>`;
+  } 
+  // (CASO 3b: Aún debe cuotas)
+  else {
+    let cuotaMsg = `Tiene ${pendientes} cuota${pendientes !== 1 ? 's' : ''} pendiente${pendientes !== 1 ? 's' : ''} de ${cantCuotas}.`;
 
-        // Si no hay cuotas pendientes, mostrar mensaje personalizado solicitado
-        if (pendientes === 0) {
-          html += `<div class="mensaje aviso" style="margin-bottom:10px; text-align:justify;"><strong>"Recuerde subir comprobante de transferencia o comprobante de pago efectivo otorgado por el CLUB, validando nuevamente por el formulario con el dni del inscripto/a". Cualquier duda que surja no dude en comunicarse con la Administración. Muchas Gracias!!</strong></div>`;
-        } else {
-          let cuotaMsg = `Tiene ${pendientes} cuota${pendientes !== 1 ? 's' : ''} pendiente${pendientes !== 1 ? 's' : ''} de ${cantCuotas}.`;
+    // Si el estado es "Pago Cuota 1" o "En revisión", se muestra
+    if (response.estadoPago && (response.estadoPago.includes('En revisión') || response.estadoPago.includes('Pago Cuota'))) {
+      cuotaMsg = `Su estado de pago es: <strong>${response.estadoPago}</strong>. ${cuotaMsg}`;
+    }
 
-          // Si el estado es "Pago Cuota 1" o "En revisión", se muestra
-          if (response.estadoPago && (response.estadoPago.includes('En revisión') || response.estadoPago.includes('Pago Cuota'))) {
-            cuotaMsg = `Su estado de pago es: <strong>${response.estadoPago}</strong>. ${cuotaMsg}`;
-          }
-
-          html += `<div class="mensaje aviso" style="margin-bottom:10px; text-align:justify;"><strong>⚠️ ${nombreCompleto} ya se encuentra REGISTRADO.</strong><br>${cuotaMsg}</div>`;
-        }
-      }
-      // Si está pendiente y es Transferencia/Efectivo
-      else {
-        // Reemplaza el nombre "undefined undefined" en el mensaje del servidor
-        const mensajeCorregido = response.message.replace('undefined undefined', nombreCompleto);
-        html += `<div class="mensaje aviso" style="margin-bottom:10px; text-align:left;"><strong>${mensajeCorregido}</strong></div>`;
-      }
+    html += `<div class="mensaje aviso" style="margin-bottom:10px; text-align:justify;"><strong>⚠️ ${nombreCompleto} ya se encuentra REGISTRADO.</strong><br>${cuotaMsg}</div>`;
+  }
+}
+// CASO 4: Aún debe pagos (Transferencia/Efectivo)
+else {
+  // Reemplaza el nombre "undefined undefined" en el mensaje del servidor
+  const mensajeCorregido = response.message.replace('undefined undefined', nombreCompleto);
+  html += `<div class="mensaje aviso" style="margin-bottom:10px; text-align:left;"><strong>${mensajeCorregido}</strong></div>`;
+}
       // --- (FIN CORRECCIÓN MENSAJES) ---
 
       if (response.adeudaAptitud === true) {
@@ -321,7 +306,9 @@
         // --- (FIN MODIFICACIÓN CHECKBOXES) ---
 
         // (Datos Pagador y Checkbox Familiar)
-        const pagoFamiliarDisabledAttr = (response.algunoHermanoConComprobantesCompletos === true) ? 'disabled title="No puede marcar Pago Familiar: al menos un hermano ya tiene todos los comprobantes."' : '';
+        const pagoFamiliarDisabledAttr = (response.algunoHermanoConComprobantesCompletos === true || response.familiaTienePagosIndividuales === true)
+  ? 'disabled title="No puede marcar Pago Familiar: Un hermano/a ya tiene pagos individuales o ya completó todos sus comprobantes."'
+  : '';
         html += `<div id="datos-externo-container"><label for="externo-nombre-pagador">Nombre y Apellido (del Adulto Pagador):</label><input type="text" id="externo-nombre-pagador" placeholder="Nombre Apellido (Quien paga)"><label for="externo-dni-pagador">DNI (del Adulto Pagador):</label><input type="tel" id="externo-dni-pagador" placeholder="DNI (Quien paga)" pattern="[0-9]{8}" inputmode="numeric" maxlength="8" title="El DNI debe tener exactamente 8 dígitos numéricos.">
       
       <div id="pago-familiar-container" style="display: ${response.tieneHermanos ? 'flex' : 'none'};">
@@ -479,6 +466,10 @@
       document.getElementById('btn-edit-add-autorizado').addEventListener('click', () => addAutorizadoCamposEdicion());
       document.getElementById('edit-aptitud-upload').addEventListener('change', manejarSubidaAptitudEdicion);
       document.getElementById('btn-guardar-cambios').addEventListener('click', submitDatosEditados);
+      if (mostrarModalAlFinal) {
+         document.getElementById('loader-validacion').style.display = 'none';
+         mostrarModalCompleto(modalTitulo, modalMensaje);
+      }
     } else {
       statusDiv.innerHTML = `<div class="mensaje error"><strong>Aviso:</strong> ${response.message}</div>`;
     }

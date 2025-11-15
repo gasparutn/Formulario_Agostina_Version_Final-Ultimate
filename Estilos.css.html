@@ -823,43 +823,6 @@
 
   /* [EN Estilos.css.html] - Pegar esto al final */
 
-/* (NUEVO) Estilos para el Modal de Inscripción Completa */
-#completo-modal-backdrop {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: rgba(0, 0, 0, 0.7);
-  display: none; /* Se activa con JS */
-  justify-content: center;
-  align-items: center;
-  z-index: 2000; /* Por encima de otros modales */
-}
-#completo-modal-content {
-  background-color: white;
-  padding: 30px;
-  border-radius: 8px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-  width: 90%;
-  max-width: 400px;
-  text-align: center;
-}
-#completo-modal-content h4 {
-  color: var(--color-exito, #28a745); /* Color verde de éxito */
-  font-size: 1.5em;
-  margin-top: 0;
-}
-#completo-modal-content p {
-  font-size: 1.1em;
-  color: #333;
-}
-#completo-modal-countdown {
-  margin-top: 20px;
-  font-weight: bold;
-  color: #6c757d;
-  font-size: 0.9em;
-}
 
 /* (NUEVO) Estilos para el botón del modal de "Completo" (copiado del de expirado) */
 #btn-modal-completo-volver {
@@ -876,5 +839,10 @@
 }
 #btn-modal-completo-volver:hover {
   background-color: #0056b3;
+}
+/* (NUEVO) Estilos para el botón de editar en el modal de "Completo" */
+#btn-modal-completo-editar {
+  margin-top: 10px; /* Añade espacio entre los dos botones */
+  /* Hereda los estilos de .btn-editar (color amarillo, etc.) */
 }
 </style>

@@ -1,5 +1,5 @@
 <script>
-// =========================================================
+  // =========================================================
 // ARCHIVO: js2.html
 // Funciones Utilitarias, de DOM y de Caché (Estables)
 // (Versión final con modal de "Inscripción Completa")
@@ -512,6 +512,11 @@ function mostrarModalExpirado(mensaje) {
  * (NUEVO) Muestra un modal de felicitaciones y reinicia la página.
  * (CORREGIDO) Ahora muestra un botón manual en lugar de redirección automática.
  */
+/**
+ * (NUEVO) Muestra un modal de felicitaciones y reinicia la página.
+ * (CORREGIDO) Ahora muestra un botón manual en lugar de redirección automática.
+ * (CORREGIDO OTRA VEZ) Añadido el botón de "Editar".
+ */
 function mostrarModalCompleto(titulo, mensaje) {
   const modal = document.getElementById('completo-modal-backdrop');
   if (!modal) return;
@@ -522,9 +527,13 @@ function mostrarModalCompleto(titulo, mensaje) {
   
   let segundos = 5;
   const countdownDisplay = document.getElementById('completo-modal-countdown');
-  const volverButton = document.getElementById('btn-modal-completo-volver'); // <-- 1. Obtener botón
+  const volverButton = document.getElementById('btn-modal-completo-volver'); // 1. Obtener botón "Volver"
+  
+  // --- (INICIO DE CORRECCIÓN) ---
+  const editarButton = document.getElementById('btn-modal-completo-editar'); // 1. Obtener botón "Editar"
+  // --- (FIN DE CORRECCIÓN) ---
 
-  // 2. Ocultar botón y asignar acción de clic
+  // 2. Ocultar botón "Volver" y asignar acción de clic
   volverButton.style.display = 'none';
   volverButton.onclick = function() {
     try {
@@ -539,6 +548,33 @@ function mostrarModalCompleto(titulo, mensaje) {
     }
   };
   
+  // --- (INICIO DE CORRECCIÓN) ---
+  // 2b. Ocultar botón "Editar" y asignar acción de clic
+  if (editarButton) {
+    editarButton.style.display = 'none';
+    editarButton.onclick = function() {
+      try {
+        // 1. Cerrar este modal
+        modal.style.display = 'none';
+        
+        // 2. Buscar el botón de edición principal en la página
+        const mainEditButton = document.getElementById('btn-mostrar-editar'); 
+        if (mainEditButton) {
+          // 3. Simular un clic en él (esto disparará el flujo del token)
+          mainEditButton.click(); 
+          // 4. Hacer scroll hasta esa sección
+          mainEditButton.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+          console.error('No se encontró #btn-mostrar-editar para hacer clic.');
+          alert('Error: No se encontró el botón de edición en la página.');
+        }
+      } catch(e) {
+        console.error("Error en click de editar (modal):", e);
+      }
+    };
+  }
+  // --- (FIN DE CORRECCIÓN) ---
+  
   countdownDisplay.textContent = `Redireccionando en ${segundos} segundos...`;
 
   const interval = setInterval(() => {
@@ -548,7 +584,13 @@ function mostrarModalCompleto(titulo, mensaje) {
       // 3. Cuando el tiempo termina
       clearInterval(interval);
       countdownDisplay.style.display = 'none'; // Ocultar contador
-      volverButton.style.display = 'block'; // Mostrar botón
+      volverButton.style.display = 'block'; // Mostrar botón "Volver"
+      
+      // --- (INICIO DE CORRECCIÓN) ---
+      if (editarButton) {
+        editarButton.style.display = 'block'; // Mostrar botón "Editar"
+      }
+      // --- (FIN DE CORRECCIÓN) ---
       
     } else {
       countdownDisplay.textContent = `Redireccionando en ${segundos} segundos...`;

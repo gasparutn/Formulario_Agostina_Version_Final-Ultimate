@@ -7,7 +7,7 @@
  * (CORRECCIÓN): Se ha hecho la comparación de 'aplicarColorGrupo'
  * insensible a mayúsculas/minúsculas.
  */
-
+el 
 /**
  * (LÓGICA PROVISTA POR EL USUARIO)
  * Determina el grupo basado en una fecha de corte fija (30 de julio).

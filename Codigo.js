@@ -3,6 +3,7 @@
  * - Se actualiza el número de columnas de 48 a 47 en `registrarDatos`.
  * - Todas las demás referencias (COL_COLEGIO_JARDIN, COL_DNI_INSCRIPTO, etc.)
  * se actualizan automáticamente desde el nuevo `Constantes.js`.
+ * - SE AÑADEN FUNCIONES DE GRUPO/COLOR Y LÓGICA DE PAGO FAMILIAR.
  */
 function doGet(e) {
   try {
@@ -49,9 +50,9 @@ function doPost(e) {
 }
 
 // =========================================================
-// --- FUNCIÓN AÑADIDA (SOLICITUD DEL USUARIO) ---
-// Esta es la función que proporcionaste, determina el grupo por fecha de corte.
+// --- (INICIO) FUNCIONES INTEGRADAS (FALTANTES) ---
 // =========================================================
+
 function obtenerGrupoPorFechaNacimiento(fechaNacStr) {
   if (!fechaNacStr) return "Sin Fecha";
 
@@ -81,22 +82,7 @@ function obtenerGrupoPorFechaNacimiento(fechaNacStr) {
     return "Error Fecha";
   }
 }
-// =========================================================
-// --- FIN FUNCIÓN AÑADIDA ---
-// =========================================================
 
-// =========================================================
-// --- FUNCIÓN AÑADIDA Y MODIFICADA (Para pintar celdas) ---
-// Se trae de 'CalculaEdadGrupoColor.js' y se modifica 
-// para que NO convierta a mayúsculas.
-// =========================================================
-/**
- * Aplica el color de fondo a la celda del grupo basado en la hoja de Configuración.
- * @param {GoogleAppsScript.Spreadsheet.Sheet} hoja - La hoja de "Registros".
- * @param {number} fila - El número de fila a colorear.
- * @param {string} textoGrupo - El texto del grupo (ej. "Grupo 5 años").
- * @param {GoogleAppsScript.Spreadsheet.Sheet} hojaConfig - La hoja de "Config".
- */
 function aplicarColorGrupo(hoja, fila, textoGrupo, hojaConfig) {
   try {
     const rangoGrupos = hojaConfig.getRange("A30:B41");
@@ -104,36 +90,25 @@ function aplicarColorGrupo(hoja, fila, textoGrupo, hojaConfig) {
     const coloresGrupos = rangoGrupos.getBackgrounds();
 
     for (let i = 0; i < valoresGrupos.length; i++) {
-      
-      // =========================================================
-      // --- ¡¡AQUÍ ESTÁ LA CORRECCIÓN!! ---
-      // Comparamos el texto exacto (ej. "Grupo 3 años") 
-      // sin forzar mayúsculas.
-      // =========================================================
       if (valoresGrupos[i][0].toString().trim() == textoGrupo.toString().trim()) {
-        const color = coloresGrupos[i][1]; 
-        
+        const color = coloresGrupos[i][1];
         hoja.getRange(fila, COL_GRUPOS).setBackground(color);
         return;
       }
     }
-    // Si llega aquí, es porque no encontró una coincidencia de texto
     Logger.log(`No se encontró color para el grupo: "${textoGrupo}" en la hoja Config!A30:A41`);
-
   } catch (e) {
     Logger.log(`Error al aplicar color para el grupo ${textoGrupo} en fila ${fila}: ${e.message}`);
   }
 }
+
 // =========================================================
-// --- FIN FUNCIÓN MODIFICADA ---
+// --- (FIN) FUNCIONES INTEGRADAS (FALTANTES) ---
 // =========================================================
 
 
 /**
 * (MODIFICADO v15-CORREGIDO)
-* - Se actualiza el número de columnas de 48 a 47 en `registrarDatos`.
-* - Todas las constantes (COL_COLEGIO_JARDIN, COL_DNI_INSCRIPTO, etc.)
-* se leen desde el nuevo Constantes.js y apuntan a las columnas correctas.
 */
 function registrarDatos(datos, testSheetName) {
   Logger.log("REGISTRAR DATOS INICIADO. Datos: " + JSON.stringify(datos));
@@ -286,13 +261,7 @@ function registrarDatos(datos, testSheetName) {
         try {
           const fechaNacStr = datos.fechaNacimiento;
           if (fechaNacStr) {
-            // =========================================================
-            // --- ¡¡MODIFICACIÓN #1!! ---
-            // Se llama a la nueva función del usuario.
-            // =========================================================
             const grupo = obtenerGrupoPorFechaNacimiento(fechaNacStr);
-            // =========================================================
-            
             hojaRegistro.getRange(filaExistente, COL_GRUPOS).setValue(grupo); // I
             aplicarColorGrupo(hojaRegistro, filaExistente, grupo, hojaConfig);
             Logger.log(`Grupo [${grupo}] y color RE-aplicados para DNI ${dniLimpio} en fila ${filaExistente}.`);
@@ -429,13 +398,7 @@ function registrarDatos(datos, testSheetName) {
     try {
       const fechaNacStr = datos.fechaNacimiento;
       if (fechaNacStr) {
-        // =========================================================
-        // --- ¡¡MODIFICACIÓN #2!! ---
-        // Se llama a la nueva función del usuario.
-        // =========================================================
         const grupo = obtenerGrupoPorFechaNacimiento(fechaNacStr);
-        // =========================================================
-
         hojaRegistro.getRange(nuevaFila, COL_GRUPOS).setValue(grupo); // I
         aplicarColorGrupo(hojaRegistro, nuevaFila, grupo, hojaConfig);
       } else {
@@ -627,9 +590,6 @@ function obtenerEstadoRegistro() {
 
 /**
  * (MODIFICADO v15-CORREGIDO)
- * - Esta función no requiere cambios internos, ya que todas las
- * lecturas de columnas (COL_DNI_INSCRIPTO, COL_ESTADO_PAGO, etc.)
- * se actualizan automáticamente desde `Constantes.js`.
  */
 function validarAcceso(dni, tipoInscripto) {
   try {
@@ -864,9 +824,6 @@ function validarAcceso(dni, tipoInscripto) {
 
 /**
  * (MODIFICADO v15-CORREGIDO)
- * - Esta función no requiere cambios internos, ya que todas las
- * lecturas de columnas (COL_ESTADO_PAGO, COL_CANTIDAD_CUOTAS, etc.)
- * se actualizan automáticamente desde `Constantes.js`.
  */
 function configurarColumnaEnviarEmailComoCheckboxDeshabilitada() {
   try {
@@ -916,9 +873,7 @@ function configurarColumnaEnviarEmailComoCheckboxDeshabilitada() {
 
 /**
  * (MODIFICADO v15-CORREGIDO)
- * - Esta función no requiere cambios internos, ya que todas las
- * lecturas de columnas (COL_ESTADO_PAGO, COL_CANTIDAD_CUOTAS, etc.)
- * se actualizan automáticamente desde `Constantes.js`.
+ * (MODIFICADO v17) LÓGICA DE PAGO FAMILIAR AÑADIDA
  */
 function gestionarUsuarioYaRegistrado(
   ss,
@@ -1240,6 +1195,13 @@ function gestionarUsuarioYaRegistrado(
   );
 
   let algunoHermanoCompletos = false; 
+  
+  // =========================================================
+  // --- (INICIO CORRECCIÓN PAGO FAMILIAR v17) ---
+  // =========================================================
+  let familiaTienePagosIndividuales = false; 
+  // =========================================================
+
   if (tieneHermanos && idFamiliar) {
     try {
       const finder = hojaRegistro
@@ -1251,12 +1213,22 @@ function gestionarUsuarioYaRegistrado(
 
       for (const celda of filasHermanos) {
         const r = celda.getRow();
-        if (r === filaRegistro) continue; 
+        if (r === filaRegistro) continue; // No contarse a sí mismo
 
         const filaVals = hojaRegistro
             .getRange(r, 1, 1, hojaRegistro.getLastColumn())
             .getValues()[0];
         
+        // =========================================================
+        // --- (INICIO CORRECCIÓN PAGO FAMILIAR v17) ---
+        // =========================================================
+        const estadoPagoHermano = String(filaVals[COL_ESTADO_PAGO - 1] || ""); // AJ
+        // Lógica corregida: Quita "Familiar Pagada" y luego busca si "Pagada" todavía existe
+        if (estadoPagoHermano.replace(/Familiar Pagada/g, "").includes("Pagada")) {
+           familiaTienePagosIndividuales = true;
+        }
+        // =========================================================
+
         const ctot = filaVals[COL_COMPROBANTE_MANUAL_TOTAL_EXT - 1]; // AN
         const cc1 = filaVals[COL_COMPROBANTE_MANUAL_CUOTA1 - 1]; // AO
         const cc2 = filaVals[COL_COMPROBANTE_MANUAL_CUOTA2 - 1]; // AP
@@ -1278,12 +1250,17 @@ function gestionarUsuarioYaRegistrado(
           (cantidadReal > 0 && cnt >= cantidadReal) || Boolean(ctot);
         if (completos) {
           algunoHermanoCompletos = true;
-          break; 
+        }
+        
+        // Si ya encontramos ambas condiciones, podemos salir del bucle
+        if (algunoHermanoCompletos && familiaTienePagosIndividuales) {
+          break;
         }
       }
     } catch (e) {
-      Logger.log("Error calculando hermanos comprobantes completos: " + e.toString());
+      Logger.log("Error calculando estados de hermanos: " + e.toString());
       algunoHermanoCompletos = false;
+      familiaTienePagosIndividuales = false; // Asumir falso en caso de error
     }
   }
 
@@ -1296,6 +1273,11 @@ function gestionarUsuarioYaRegistrado(
     datos: datosParaEdicion,
     tieneHermanos: tieneHermanos,
     algunoHermanoConComprobantesCompletos: algunoHermanoCompletos,
+    // =========================================================
+    // --- (INICIO CORRECCIÓN PAGO FAMILIAR v17) ---
+    // =========================================================
+    familiaTienePagosIndividuales: familiaTienePagosIndividuales, // Nueva propiedad
+    // =========================================================
     cantidadCuotasRegistrada: cantidadCuotasRegistrada,
     cuotasPagadas: cuotasPagadasFinal,
     cuotasPendientes: cuotasPendientesByComp,
