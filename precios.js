@@ -6,24 +6,20 @@
  * Lógica: "Precio Escalonado". Cada hijo paga un precio individual
  * basado en su orden (1ro, 2do, 3ro+) y sus propias elecciones
  * de Jornada, Socio y Método de Pago.
- *
- * (MODIFICADO) 'obtenerPrecioYConfiguracion' ya no recibe 'subMetodoCuotas'
- * y ya no completa 'montoAPagar' (Col 37/AK).
  */
 
 
 /**
  * Función principal para obtener el precio basado en la grilla de Config.
- * (MODIFICADA) 'datos.subMetodoCuotas' ya no está disponible en el registro inicial.
- * (MODIFICADA) 'montoAPagar' (Col 37/AK) ya no se calcula aquí, se deja vacío.
+ * (MODIFICADA) Ahora lee el sub-método de pago para cuotas.
  *
- * @param {object} datos - Objeto con los datos del inscripto (.jornada, .metodoPago, .esSocio).
+ * @param {object} datos - Objeto con los datos del inscripto (.jornada, .metodoPago, .esSocio, .subMetodoCuotas).
  * @param {GoogleAppsScript.Spreadsheet.Sheet} hojaConfig - La hoja de "Config" ya abierta.
  * @param {number} indiceHijo - El índice del hijo (0 = Principal, 1 = 1er Hermano, 2 = 2do Hermano, etc.).
- * @returns {{precio: number, montoAPagar: string, cantidadCuotas: number}}
+ * @returns {{precio: number, montoAPagar: number, cantidadCuotas: number}}
  */
 function obtenerPrecioYConfiguracion(datos, hojaConfig, indiceHijo = 0) {
-  Logger.log(`Calculando precio para indiceHijo: ${indiceHijo}. Datos: Jornada=${datos.jornada}, Metodo=${datos.metodoPago}, Socio=${datos.esSocio}`);
+  Logger.log(`Calculando precio para indiceHijo: ${indiceHijo}. Datos: Jornada=${datos.jornada}, Metodo=${datos.metodoPago}, SubMetodo=${datos.subMetodoCuotas}, Socio=${datos.esSocio}`);
 
   const jornada = datos.jornada;
   const metodoPago = datos.metodoPago;
@@ -32,9 +28,8 @@ function obtenerPrecioYConfiguracion(datos, hojaConfig, indiceHijo = 0) {
   // (NUEVO) Determinar el tipo de pago a usar para el precio
   let tipoPagoParaPrecio = "";
   if (metodoPago === 'Pago en Cuotas') {
-    // (MODIFICADO) Ya no sabemos el sub-método en el registro inicial.
-    // Asumimos 'Transferencia' como default para el precio de cuotas.
-    tipoPagoParaPrecio = "Transferencia"; 
+    // Si es cuotas, usamos el submenú (que será "Efectivo" o "Transferencia")
+    tipoPagoParaPrecio = datos.subMetodoCuotas; 
   } else {
     // Si es pago único, usamos el menú principal
     tipoPagoParaPrecio = metodoPago; // Será "Pago Efectivo..." o "Transferencia"
@@ -124,38 +119,36 @@ function obtenerPrecioYConfiguracion(datos, hojaConfig, indiceHijo = 0) {
   // --- 4. Determinar Monto Total y Valor Cuota ---
   let precioTotal = 0;
   let valorCuota = 0;
-  
-  // =========================================================
-  // --- (MODIFICACIÓN POR SOLICITUD) ---
-  // La columna 37 (AK) ya no se autocompleta. Siempre se retorna vacío.
-  // Será completada manualmente por el usuario al subir el comprobante.
-  // =========================================================
-  let montoAPagarInicial = ''; 
+  let montoAPagarInicial; // (NUEVO)
   
   if (cantidadCuotas === 3) {
     // 'precio' (de la celda) es el valor de UNA cuota
     valorCuota = precio;
     precioTotal = precio * 3;
-    // montoAPagarInicial ya es ''
+    montoAPagarInicial = ''; // (NUEVO) AJ (Monto a Pagar) queda VACÍO
   } else {
     // Pago único
     valorCuota = 0;
     precioTotal = precio;
-    // montoAPagarInicial ya es ''
+    montoAPagarInicial = precio; // (Mantenemos) AJ se llena con el total
   }
-Logger.log(`Precio Total (AE): ${precioTotal}, Monto a Pagar (AK): ${montoAPagarInicial} (vacío), Valor Cuota (AF/AG/AH): ${valorCuota}, Cuotas: ${cantidadCuotas}`);
+Logger.log(`Precio Total (AD): ${precioTotal}, Monto a Pagar (AJ): ${montoAPagarInicial}, Valor Cuota (AE/AF/AG): ${valorCuota}, Cuotas: ${cantidadCuotas}`);
 return { 
-    precio: precioTotal, // Col AE (Precio Total)
-    montoAPagar: montoAPagarInicial, // Col AK (Monto a Pagar) - SIEMPRE VACÍO
+    precio: precioTotal, // Col AD (Precio Total)
+    montoAPagar: montoAPagarInicial, // Col AJ (Monto a Pagar)
     cantidadCuotas: cantidadCuotas,
     valorCuota: valorCuota // (NUEVA PROPIEDAD)
   };
 }
-
+   
 
 /**
  * Función helper para encontrar el índice de un hermano (0, 1, 2+)
  * cuando está actualizando sus datos.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} hojaRegistro - La hoja de "Registros".
+ * @param {number} fila - La fila del DNI que se está actualizando.
+ * @returns {number} - El índice del hijo (0, 1, 2, etc.).
  */
 function _obtenerIndiceHijo(hojaRegistro, fila) {
   try {

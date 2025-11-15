@@ -1,3 +1,4 @@
+
 /**
  * Archivo: CalculaEdadGrupoColor.gs
  * Contiene la lógica para calcular grupos por FECHA DE CORTE

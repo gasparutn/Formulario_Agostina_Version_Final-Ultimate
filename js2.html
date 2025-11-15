@@ -2,7 +2,8 @@
 // =========================================================
 // ARCHIVO: js2.html
 // Funciones Utilitarias, de DOM y de Caché (Estables)
-// (MODIFICADO) Eliminada la función toggleSubMetodoCuotas
+// (Versión final con modal de "Inscripción Completa")
+// (MODIFICADO) Añadido "debounce" para el guardado en caché
 // =========================================================
 
 /**
@@ -147,9 +148,21 @@ function toggleTransferenciaInfo() {
 
 /**
  * (NUEVO) Muestra/oculta el submenú de pago de cuotas (Efectivo/Transferencia).
- * (MODIFICADO) ESTA FUNCIÓN HA SIDO ELIMINADA
  */
-// function toggleSubMetodoCuotas() { ... }
+function toggleSubMetodoCuotas() {
+  const metodoPago = document.getElementById('metodoPago').value;
+  const container = document.getElementById('sub-metodo-cuotas-container');
+  const inputSelect = document.getElementById('subMetodoCuotas');
+  
+  if (metodoPago === 'Pago en Cuotas') {
+    container.style.display = 'block';
+    inputSelect.required = true;
+  } else {
+    container.style.display = 'none';
+    inputSelect.required = false;
+    inputSelect.value = ''; // Limpiar selección si se cambia a otro método
+  }
+}
 
 
 /**
@@ -411,7 +424,7 @@ function cargarFormDesdeCache() {
    calcularYMostrarEdad();
     toggleTransferenciaInfo();
     toggleCuotasInfo(); 
-    // toggleSubMetodoCuotas(); // <-- (MODIFICADO) ELIMINADO
+    toggleSubMetodoCuotas(); // <-- AÑADIDO
 
   } catch (e) {
     console.warn("No se pudo cargar el caché del formulario: ", e);
