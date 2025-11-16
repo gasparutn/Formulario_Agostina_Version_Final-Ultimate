@@ -27,16 +27,15 @@
   }
 
   body::before {
-    z-index: -2;
-    content: "";
-    position: fixed;
-    top: 0;
-    left: 0;
-    /* <-- CAMBIO: De 30px a 0 para centrarla correctamente */
-    height: 100vh;
-    width: 100vw;
+  z-index: -2;
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 100vw;
 
-    background-image: url('https://i.imgur.com/1F0Eoqy.jpeg');
+  background-image: url('https://i.imgur.com/1F0Eoqy.jpeg');
     background-size: contain;
     /* <-- MODIFICADO: Vuelto a 'contain' para mobile */
     background-position: center;
@@ -66,15 +65,15 @@
     padding: 25px;
     /* ========================================================= */
     /* --- (CORRECCIÓN DE LAG #1) - Se usa blanco sólido --- */
-    background-color: #FFFFFF;
+    background-color: rgba(255, 255, 255, 0.70); /* <-- DESCOMENTA ESTA LÍNEA */
     /* background-color: rgba(255, 255, 255, 0.70); */
     /* ========================================================= */
     
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
-    /* (V) Agregamos border-radius para un mejor look */
-    box-sizing: border-box;
-  }
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
 
   h1,
   h2 {
