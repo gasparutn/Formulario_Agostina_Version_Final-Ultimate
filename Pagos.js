@@ -1,4 +1,4 @@
-// =========================================================
+
 // (MODIFICADO v15-CORREGIDO)
 // Este archivo no requiere cambios internos, ya que todas las
 // constantes (COL_DNI_INSCRIPTO, COL_MODO_PAGO_CUOTA, etc.)
@@ -30,7 +30,11 @@ function paso1_registrarRegistro(datos) {
     Logger.log(`Total Hijos: ${totalHijos}. Índice de precio aplicado: ${indicePrecioAplicar}. Precio H1: ${infoPrecioPrincipal.precio}`);
 
     // 4. Aplicar ese precio al Inscripto Principal (datos)
-    datos.precio = infoPrecioPrincipal.precio; // Col AE (Precio Total)
+    if (datos.metodoPago === 'Pago en Cuotas') {
+      datos.precio = infoPrecioPrincipal.valorCuota;
+    } else {
+      datos.precio = infoPrecioPrincipal.precio;
+    }
     datos.montoAPagar = infoPrecioPrincipal.montoAPagar; // Col AK ('' si es cuotas, $Total si es único)
     datos.cantidadCuotas = infoPrecioPrincipal.cantidadCuotas; // Col AI
     datos.valorCuota = infoPrecioPrincipal.valorCuota; // (NUEVO) Valor para AF, AG, AH
@@ -176,7 +180,12 @@ function actualizarDatosHermano(datos) {
     const indiceHijo = _obtenerIndiceHijo(hojaRegistro, fila);
     const infoPrecio = obtenerPrecioYConfiguracion(datos, hojaConfig, indiceHijo);
     
-    const precio = infoPrecio.precio; // Col AE (Precio Total)
+    let precio;
+    if (datos.metodoPago === 'Pago en Cuotas') {
+        precio = infoPrecio.valorCuota;
+    } else {
+        precio = infoPrecio.precio;
+    }
     const montoAPagar = infoPrecio.montoAPagar; // Col AK ('' si es cuotas, $Total si es único)
     const valorCuota = infoPrecio.valorCuota; // Valor para AF, AG, AH
     

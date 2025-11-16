@@ -51,7 +51,7 @@ document.getElementById('metodoPago').addEventListener('change', () => {
 // toggleCantidadCuotas(); // Sigue eliminada
 toggleTransferenciaInfo();
 toggleCuotasInfo();
-toggleSubMetodoCuotas(); // <-- AÑADIDO
+// toggleSubMetodoCuotas(); // <-- AÑADIDO
 // toggleCuotasTransferenciaInfo(); // <-- (PUNTO 33) ELIMINADO
 });
 // (Punto 28) Restaurado: Copiar Alias
@@ -80,7 +80,7 @@ alert('Error al copiar: ' + err);
 // (Punto 9) Listener Autorizado
 document.getElementById('btn-add-autorizado').addEventListener('click', function() {
 addAutorizadoCampos();
-guardarFormEnCache();
+// guardarFormEnCache();
 });
 
 // --- (INICIO DE MODIFICACIÓN) ---
@@ -258,14 +258,6 @@ if (fechaNacPrincipal < "2010-01-01" || fechaNacPrincipal > "2023-12-31") {
 return validationFail('Error: La fecha de nacimiento debe estar entre 01/01/2010 y 31/12/2023.', fechaNacInput);
 }
 
-// --- (NUEVA VALIDACIÓN DE SUB-MENÚ DE CUOTAS) ---
-const metodoPagoSeleccionado = document.getElementById('metodoPago').value;
-const subMetodoInput = document.getElementById('subMetodoCuotas');
-if (metodoPagoSeleccionado === 'Pago en Cuotas' && !subMetodoInput.value) {
-  return validationFail('Error: Debe seleccionar cómo pagará las cuotas (Efectivo o Transferencia).', subMetodoInput);
-}
-
-
 loader.querySelector('p').textContent = 'Recolectando datos...';
 
 // --- 4. Recolección de Datos ---
@@ -393,7 +385,7 @@ window.top.location.href = APP_URL;
 }
 });
 
-document.getElementById('registroForm').addEventListener('change', triggerGuardarFormEnCache);
+// document.getElementById('registroForm').addEventListener('change', triggerGuardarFormEnCache);
 
 // --- FIN DE LISTENERS MOVIDOS ---
 

@@ -480,6 +480,33 @@ function actualizarDatosPersonales(dni, datosEditados) {
           .getRange(fila, COL_PERSONAS_AUTORIZADAS)
           .setValue(datosEditados.personasAutorizadas);
 
+      // --- INICIO MODIFICACIÓN: Añadir campos de salud ---
+      if (datosEditados.practicaDeporte !== undefined)
+        hoja
+          .getRange(fila, COL_PRACTICA_DEPORTE)
+          .setValue(datosEditados.practicaDeporte);
+      if (datosEditados.especifiqueDeporte !== undefined)
+        hoja
+          .getRange(fila, COL_ESPECIFIQUE_DEPORTE)
+          .setValue(datosEditados.especifiqueDeporte);
+      if (datosEditados.tieneEnfermedad !== undefined)
+        hoja
+          .getRange(fila, COL_TIENE_ENFERMEDAD)
+          .setValue(datosEditados.tieneEnfermedad);
+      if (datosEditados.especifiqueEnfermedad !== undefined)
+        hoja
+          .getRange(fila, COL_ESPECIFIQUE_ENFERMEDAD)
+          .setValue(datosEditados.especifiqueEnfermedad);
+      if (datosEditados.esAlergico !== undefined)
+        hoja
+          .getRange(fila, COL_ES_ALERGICO)
+          .setValue(datosEditados.esAlergico);
+      if (datosEditados.especifiqueAlergia !== undefined)
+        hoja
+          .getRange(fila, COL_ESPECIFIQUE_ALERGIA)
+          .setValue(datosEditados.especifiqueAlergia);
+      // --- FIN MODIFICACIÓN ---
+
       if (
         datosEditados.urlCertificadoAptitud !== undefined &&
         datosEditados.urlCertificadoAptitud.startsWith("http")
@@ -924,8 +951,16 @@ function gestionarUsuarioYaRegistrado(
     telResponsable1: rangoFila[COL_TEL_RESPONSABLE_1 - 1] || '',
     adultoResponsable2: rangoFila[COL_ADULTO_RESPONSABLE_2 - 1] || '',
     telResp2: rangoFila[COL_TEL_RESPONSABLE_2 - 1] || '',
-    personasAutorizadas: rangoFila[COL_PERSONAS_AUTORIZADAS - 1] || '',
-    urlCertificadoAptitud: rangoFila[COL_APTITUD_FISICA - 1] || '' // Y
+    personasAutorizadas: String(rangoFila[COL_PERSONAS_AUTORIZADAS - 1] || '').trim(),
+    urlCertificadoAptitud: String(rangoFila[COL_APTITUD_FISICA - 1] || '').trim(), // Y
+    // --- INICIO MODIFICACIÓN: Añadir campos de salud y limpiar datos ---
+    practicaDeporte: String(rangoFila[COL_PRACTICA_DEPORTE - 1] || '').trim(),
+    especifiqueDeporte: String(rangoFila[COL_ESPECIFIQUE_DEPORTE - 1] || '').trim(),
+    tieneEnfermedad: String(rangoFila[COL_TIENE_ENFERMEDAD - 1] || '').trim(),
+    especifiqueEnfermedad: String(rangoFila[COL_ESPECIFIQUE_ENFERMEDAD - 1] || '').trim(),
+    esAlergico: String(rangoFila[COL_ES_ALERGICO - 1] || '').trim(),
+    especifiqueAlergia: String(rangoFila[COL_ESPECIFIQUE_ALERGIA - 1] || '').trim()
+    // --- FIN MODIFICACIÓN ---
   };
 
 
@@ -1194,73 +1229,62 @@ function gestionarUsuarioYaRegistrado(
     cantidadCuotasRegistrada - pagadasCountByComp
   );
 
-  let algunoHermanoCompletos = false; 
-  
-  // =========================================================
-  // --- (INICIO CORRECCIÓN PAGO FAMILIAR v17) ---
-  // =========================================================
-  let familiaTienePagosIndividuales = false; 
-  // =========================================================
+  let algunoHermanoCompletos = false;
+  let familiaPagos = {}; // Objeto para almacenar los estados de pago de toda la familia
+
+  // Helper para determinar el estado de una cuota
+  function obtenerEstadoCuota(fila, numeroCuota) {
+    const estadoPago = String(fila[COL_ESTADO_PAGO - 1] || "");
+    const comprobante = fila[COL_COMPROBANTE_MANUAL_CUOTA1 - 2 + numeroCuota]; // AO, AP, AQ
+    
+    if (comprobante && String(comprobante).trim() !== "") {
+      return "pagada";
+    }
+    if (estadoPago.includes(`C${numeroCuota} Pagada`)) {
+      return "pagada";
+    }
+    return "pendiente";
+  }
 
   if (tieneHermanos && idFamiliar) {
     try {
-      const finder = hojaRegistro
-        .getRange(2, COL_VINCULO_PRINCIPAL, hojaRegistro.getLastRow() - 1, 1) // AR
-        .createTextFinder(idFamiliar)
-        .matchEntireCell(true);
+      const rangoVinculos = hojaRegistro.getRange(2, COL_VINCULO_PRINCIPAL, hojaRegistro.getLastRow() - 1, 1);
+      const filasFamiliaEncontradas = rangoVinculos.createTextFinder(idFamiliar).matchEntireCell(true).findAll();
       
-      const filasHermanos = finder.findAll();
+      const rangoCompletoHoja = hojaRegistro.getRange(1, 1, hojaRegistro.getLastRow(), hojaRegistro.getLastColumn()).getValues();
 
-      for (const celda of filasHermanos) {
-        const r = celda.getRow();
-        if (r === filaRegistro) continue; // No contarse a sí mismo
-
-        const filaVals = hojaRegistro
-            .getRange(r, 1, 1, hojaRegistro.getLastColumn())
-            .getValues()[0];
+      filasFamiliaEncontradas.forEach(celda => {
+        const filaIndex = celda.getRow() - 1; // a base 0
+        const filaHermano = rangoCompletoHoja[filaIndex];
         
-        // =========================================================
-        // --- (INICIO CORRECCIÓN PAGO FAMILIAR v17) ---
-        // =========================================================
-        const estadoPagoHermano = String(filaVals[COL_ESTADO_PAGO - 1] || ""); // AJ
-        // Lógica corregida: Quita "Familiar Pagada" y luego busca si "Pagada" todavía existe
-        if (estadoPagoHermano.replace(/Familiar Pagada/g, "").includes("Pagada")) {
-           familiaTienePagosIndividuales = true;
-        }
-        // =========================================================
+        const dniHermano = limpiarDNI(filaHermano[COL_DNI_INSCRIPTO - 1]);
+        if (!dniHermano) return;
 
-        const ctot = filaVals[COL_COMPROBANTE_MANUAL_TOTAL_EXT - 1]; // AN
-        const cc1 = filaVals[COL_COMPROBANTE_MANUAL_CUOTA1 - 1]; // AO
-        const cc2 = filaVals[COL_COMPROBANTE_MANUAL_CUOTA2 - 1]; // AP
-        const cc3 = filaVals[COL_COMPROBANTE_MANUAL_CUOTA3 - 1]; // AQ
-        let cnt = 0;
-        if (cc1 && String(cc1).trim() !== "") cnt++;
-        if (cc2 && String(cc2).trim() !== "") cnt++;
-        if (cc3 && String(cc3).trim() !== "") cnt++;
-        const cantidadCuotasFila = parseInt(
-          filaVals[COL_CANTIDAD_CUOTAS - 1] // AI
-        );
-        const cantidadReal =
-          isNaN(cantidadCuotasFila) || cantidadCuotasFila < 1
-            ? filaVals[COL_METODO_PAGO - 1] === "Pago en Cuotas"
-              ? 3
-              : 0
-            : cantidadCuotasFila;
-        const completos =
-          (cantidadReal > 0 && cnt >= cantidadReal) || Boolean(ctot);
-        if (completos) {
+        familiaPagos[dniHermano] = {
+          c1: obtenerEstadoCuota(filaHermano, 1),
+          c2: obtenerEstadoCuota(filaHermano, 2),
+          c3: obtenerEstadoCuota(filaHermano, 3)
+        };
+
+        // Lógica para algunoHermanoCompletos
+        const ctot = filaHermano[COL_COMPROBANTE_MANUAL_TOTAL_EXT - 1];
+        const cc1 = filaHermano[COL_COMPROBANTE_MANUAL_CUOTA1 - 1];
+        const cc2 = filaHermano[COL_COMPROBANTE_MANUAL_CUOTA2 - 1];
+        const cc3 = filaHermano[COL_COMPROBANTE_MANUAL_CUOTA3 - 1];
+        let cnt = [cc1, cc2, cc3].filter(c => c && String(c).trim() !== "").length;
+        
+        const cantidadCuotasFila = parseInt(filaHermano[COL_CANTIDAD_CUOTAS - 1]);
+        const cantidadReal = isNaN(cantidadCuotasFila) || cantidadCuotasFila < 1 ? (filaHermano[COL_METODO_PAGO - 1] === "Pago en Cuotas" ? 3 : 0) : cantidadCuotasFila;
+        
+        if ((cantidadReal > 0 && cnt >= cantidadReal) || Boolean(ctot)) {
           algunoHermanoCompletos = true;
         }
-        
-        // Si ya encontramos ambas condiciones, podemos salir del bucle
-        if (algunoHermanoCompletos && familiaTienePagosIndividuales) {
-          break;
-        }
-      }
+      });
+
     } catch (e) {
       Logger.log("Error calculando estados de hermanos: " + e.toString());
       algunoHermanoCompletos = false;
-      familiaTienePagosIndividuales = false; // Asumir falso en caso de error
+      familiaPagos = {}; // Reset en caso de error
     }
   }
 
@@ -1273,11 +1297,7 @@ function gestionarUsuarioYaRegistrado(
     datos: datosParaEdicion,
     tieneHermanos: tieneHermanos,
     algunoHermanoConComprobantesCompletos: algunoHermanoCompletos,
-    // =========================================================
-    // --- (INICIO CORRECCIÓN PAGO FAMILIAR v17) ---
-    // =========================================================
-    familiaTienePagosIndividuales: familiaTienePagosIndividuales, // Nueva propiedad
-    // =========================================================
+    familiaPagos: familiaPagos, // Nueva propiedad
     cantidadCuotasRegistrada: cantidadCuotasRegistrada,
     cuotasPagadas: cuotasPagadasFinal,
     cuotasPendientes: cuotasPendientesByComp,

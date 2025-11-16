@@ -845,4 +845,85 @@
   margin-top: 10px; /* Añade espacio entre los dos botones */
   /* Hereda los estilos de .btn-editar (color amarillo, etc.) */
 }
+
+/* --- Estilos para el formulario de edición --- */
+.form-section-vertical .form-group {
+  margin-bottom: 15px;
+}
+
+.edit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 15px 20px;
+}
+
+.edit-grid-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.edit-grid-item-group {
+  display: block;
+}
+
+.telefono-container {
+  display: grid;
+  grid-template-columns: 35% 1fr;
+  gap: 10px;
+}
+
+.telefono-container input {
+  width: 100%; /* Let the grid handle the sizing */
+}
+
+#editar-form-container .radio-group {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  margin-top: 5px;
+}
+
+#editar-form-container .radio-group label {
+  margin-bottom: 0; /* Override general label margin */
+}
+
+.edit-form-actions {
+  display: flex;
+  gap: 15px;
+  margin-top: 25px;
+  justify-content: center; /* Centrar los botones */
+}
+
+#btn-guardar-cambios, #btn-cancelar-edicion {
+    color: white;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+    flex-basis: 180px; /* Ancho base para cada botón */
+    text-align: center;
+}
+
+#btn-guardar-cambios {
+  background-color: #28a745; /* Verde éxito */
+}
+#btn-guardar-cambios:hover {
+  background-color: #218838;
+}
+
+#btn-cancelar-edicion {
+  background-color: #6c757d; /* Gris secundario */
+}
+#btn-cancelar-edicion:hover {
+  background-color: #5a6268;
+}
+
+.autorizado-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
 </style>

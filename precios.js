@@ -29,7 +29,8 @@ function obtenerPrecioYConfiguracion(datos, hojaConfig, indiceHijo = 0) {
   let tipoPagoParaPrecio = "";
   if (metodoPago === 'Pago en Cuotas') {
     // Si es cuotas, usamos el submenú (que será "Efectivo" o "Transferencia")
-    tipoPagoParaPrecio = datos.subMetodoCuotas; 
+    // Si no está definido (registro inicial), se usa Transferencia por defecto para el cálculo.
+    tipoPagoParaPrecio = datos.subMetodoCuotas || 'Transferencia'; 
   } else {
     // Si es pago único, usamos el menú principal
     tipoPagoParaPrecio = metodoPago; // Será "Pago Efectivo..." o "Transferencia"

@@ -170,7 +170,7 @@ function toggleSubMetodoCuotas() {
  */
 function removerFila(boton) {
   boton.parentElement.remove();
-  triggerGuardarFormEnCache(); // (MODIFICADO) Llama al trigger en lugar de al guardado directo
+  // triggerGuardarFormEnCache(); // (MODIFICADO) Llama al trigger en lugar de al guardado directo
 }
 
 /**
@@ -202,11 +202,11 @@ function addAutorizadoCamposEdicion(nombre = '', dni = '') {
   div.className = 'fila-dinamica';
 
   div.innerHTML = `
-  <div class="campos-dinamicos">
-  <input type="text" class="edit-autorizado-nombre" placeholder="Nombre y Apellido (Relación)" value="${nombre}">
-  <input type="tel" class="edit-autorizado-dni" placeholder="DNI (8 dígitos)" maxlength="8" pattern="[0-9]{8}" inputmode="numeric" value="${dni}" title="El DNI debe tener exactamente 8 dígitos numéricos.">
+  <div class="autorizado-row">
+    <input type="text" class="edit-autorizado-nombre" placeholder="Nombre y Apellido" value="${nombre}" title="Ingrese el nombre y apellido de la persona autorizada.">
+    <input type="tel" class="edit-autorizado-dni" placeholder="DNI (8 dígitos)" maxlength="8" pattern="[0-9]{8}" inputmode="numeric" value="${dni}" title="Ingrese el DNI de 8 dígitos de la persona autorizada.">
+    <button type="button" class="btn-remover" onclick="removerFila(this)">X</n>
   </div>
-  <button type="button" class="btn-remover" onclick="removerFila(this)">X</button>
   `;
   container.appendChild(div);
 }
@@ -315,59 +315,52 @@ function guardarFormEnCache() {
     const data = {};
     document.querySelectorAll('.form-cache').forEach(el => {
       const key = el.id || el.name;
-      if (!key) return; 
-
-      if (el.disabled) {
-        return;
-      }
-      
-      if (el.readOnly && !el.id) {
-         data[key] = el.value;
-      }
-
-      if (el.readOnly && el.id) {
-        data[key] = el.value;
-        return;
-      }
+      if (!key || el.disabled) return;
 
       if (el.type === 'radio') {
         if (el.checked) {
           data[el.name] = el.value;
         }
-      } else if (!el.readOnly) {
+      } else {
         data[key] = el.value;
       }
     });
 
     data.autorizados = [];
-    const nombresAut = document.querySelectorAll('.autorizado-nombre');
-    const dnisAut = document.querySelectorAll('.autorizado-dni');
-    for (let i = 0; i < dnisAut.length; i++) {
-      if (nombresAut[i].value || dnisAut[i].value) { 
-        data.autorizados.push({ n: nombresAut[i].value, d: dnisAut[i].value });
+    document.querySelectorAll('#autorizados-container .fila-dinamica').forEach(row => {
+      const nombreInput = row.querySelector('.autorizado-nombre');
+      const dniInput = row.querySelector('.autorizado-dni');
+      if (nombreInput && dniInput) {
+        const nombre = nombreInput.value;
+        const dni = dniInput.value;
+        if (nombre || dni) {
+          data.autorizados.push({ n: nombre, d: dni });
+        }
       }
-    }
+    });
 
     data.hermanos = [];
-    const nombresHermano = document.querySelectorAll('.hermano-nombre');
-    const apellidosHermano = document.querySelectorAll('.hermano-apellido');
-    const obrasSocialesHermano = document.querySelectorAll('.hermano-obrasocial');
-    const colegiosHermano = document.querySelectorAll('.hermano-colegio');
-    const dnisHermano = document.querySelectorAll('.hermano-dni');
-    const fechasNacHermano = document.querySelectorAll('.hermano-fechanac');
-    const tiposHermano = document.querySelectorAll('.hermano-tipo');
-    
-    for (let i = 0; i < dnisHermano.length; i++) {
+    document.querySelectorAll('#hermanos-container .fila-dinamica').forEach(row => {
+      const nombreInput = row.querySelector('.hermano-nombre');
+      const apellidoInput = row.querySelector('.hermano-apellido');
+      const obraSocialInput = row.querySelector('.hermano-obrasocial');
+      const colegioInput = row.querySelector('.hermano-colegio');
+      const dniInput = row.querySelector('.hermano-dni');
+      const fechaNacInput = row.querySelector('.hermano-fechanac');
+      const tipoInput = row.querySelector('.hermano-tipo');
+
+      if (dniInput) { // Check if at least the DNI input exists
         data.hermanos.push({
-          n: (nombresHermano[i] ? nombresHermano[i].value : ''),
-          a: (apellidosHermano[i] ? apellidosHermano[i].value : ''),
-          os: (obrasSocialesHermano[i] ? obrasSocialesHermano[i].value : ''),
-          c: (colegiosHermano[i] ? colegiosHermano[i].value : ''),
-          d: (dnisHermano[i] ? dnisHermano[i].value : ''),
-          f: (fechasNacHermano[i] ? fechasNacHermano[i].value : ''),
-          t: (tiposHermano[i] ? tiposHermano[i].value : '')
+          n: nombreInput ? nombreInput.value : '',
+          a: apellidoInput ? apellidoInput.value : '',
+          os: obraSocialInput ? obraSocialInput.value : '',
+          c: colegioInput ? colegioInput.value : '',
+          d: dniInput.value,
+          f: fechaNacInput ? fechaNacInput.value : '',
+          t: tipoInput ? tipoInput.value : ''
         });
-    }
+      }
+    });
 
     localStorage.setItem(CACHE_KEY, JSON.stringify(data));
 

@@ -654,6 +654,9 @@ function subirComprobanteManual(
           // Aplicar para cada miembro: principal con la función completa, hermanos con la función ligera
           todasLasFilas.forEach((celda) => {
             const rowNum = celda.getRow();
+            if (datosExtras.subMetodo) {
+              hoja.getRange(rowNum, COL_MODO_PAGO_CUOTA).setValue(datosExtras.subMetodo);
+            }
             if (rowNum === fila) {
               const resultadoFila = aplicarCambios(
                 rowNum,
@@ -688,6 +691,9 @@ function subirComprobanteManual(
         }
       } else {
         // Aplicación Individual
+        if (datosExtras.subMetodo) {
+          hoja.getRange(fila, COL_MODO_PAGO_CUOTA).setValue(datosExtras.subMetodo);
+        }
         resultadoPrincipal = aplicarCambios(fila, metodoPagoHoja, fileUrl);
       }
 
