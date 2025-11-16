@@ -43,7 +43,32 @@ function determinarGrupoPorFecha(fechaNacStr) {
     return "Error Fecha";
   }
 }
+/*
+// este bloque calcula igual la edad con fecha de corte sin la referencia, pero es atumàtico, no requiere volver a refecncias el año
+function determinarGrupoPorFecha(fechaNacStr, anioReferencia) {
+  if (!fechaNacStr) return "Sin Fecha";
 
+  try {
+    const fechaNac = new Date(fechaNacStr + "T00:00:00Z");
+    const fechaCorte = new Date(Date.UTC(anioReferencia, 5, 30)); // 30 de junio (mes 5 porque enero=0)
+
+    // Calcular edad al corte
+    let edad = fechaCorte.getUTCFullYear() - fechaNac.getUTCFullYear();
+    const cumpleAntesDelCorte = 
+      (fechaNac.getUTCMonth() < fechaCorte.getUTCMonth()) ||
+      (fechaNac.getUTCMonth() === fechaCorte.getUTCMonth() && fechaNac.getUTCDate() <= fechaCorte.getUTCDate());
+
+    if (!cumpleAntesDelCorte) {
+      edad--; // Si cumple después del corte, aún no alcanza esa edad
+    }
+
+    return Grupo ${edad} años;
+
+  } catch (e) {
+    return "Error Fecha";
+  }
+}
+*/
 /**
  * Aplica el color de fondo a la celda del grupo basado en la hoja de Configuración.
  * @param {GoogleAppsScript.Spreadsheet.Sheet} hoja - La hoja de "Registros".
