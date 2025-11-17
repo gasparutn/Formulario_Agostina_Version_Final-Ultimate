@@ -278,7 +278,7 @@ else {
         // --- (FIN MODIFICACIÓN MENSAJE CUOTAS) ---
 
         // (Selector de tipo de pago)
-        html += `<label for="tipo-comprobante-select">Seleccione el tipo de comprobante:</label><select id="tipo-comprobante-select"><option value="">-- Elija una opción --</option><option value="mp_total" style="display: ${pagoTotalMPVisible ? 'block' : 'none'};">a) Comprobante 1 pago Mercado Pago Monto Total</option><option value="mp_cuotas_group" style="display: ${response.metodoPago === 'Pago en Cuotas' ? 'block' : 'none'};">b) Comprobante Pagos 3 cuotas</option><option value="externo" style="display: ${response.metodoPago !== 'Pago en Cuotas' ? 'block' : 'none'};">c) Comprobante Externo (Transferencia, etc.)</option></select>`;
+        html += `<label for="tipo-comprobante-select" class="titulo-seccion-comprobante"><b>Seleccione el tipo de comprobante:</b></label><select id="tipo-comprobante-select"><option value="">-- Elija una opción --</option><option value="mp_total" style="display: ${pagoTotalMPVisible ? 'block' : 'none'};">a) Comprobante 1 pago Mercado Pago Monto Total</option><option value="mp_cuotas_group" style="display: ${response.metodoPago === 'Pago en Cuotas' ? 'block' : 'none'};">b) Comprobante Pagos 3 cuotas</option><option value="externo" style="display: ${response.metodoPago !== 'Pago en Cuotas' ? 'block' : 'none'};">c) Comprobante Externo (Transferencia, etc.)</option></select>`;
 
         // --- (INICIO MODIFICACIÓN CHECKBOXES - DESHABILITAR PAGADAS) ---
         const cuotasPagadas = response.cuotasPagadas || [];
@@ -287,7 +287,7 @@ else {
         const c3_pagada = cuotasPagadas.includes('mp_cuota_3');
 
         html += `<div id="cuota-selector-container" style="display: none; margin-top: 10px;">
-        <label>Seleccione la/s cuota/s que pagó con este comprobante:</label>
+        <label class="titulo-seccion-comprobante"><b>Seleccione la/s cuota/s que pagó con este comprobante:</b></label>
         <div class="cuota-checkbox-container">
           <div class="cuota-checkbox-item">
             <input type="checkbox" id="cuota-check-1" value="mp_cuota_1" ${c1_pagada ? 'disabled' : ''}>
@@ -307,15 +307,18 @@ else {
 
                 // (Datos Pagador y Checkbox Familiar)
 
-                html += `<div id="datos-externo-container"><label for="externo-nombre-pagador">Nombre y Apellido (del Adulto Pagador):</label><input type="text" id="externo-nombre-pagador" placeholder="Nombre Apellido (Quien paga)"><label for="externo-dni-pagador">DNI (del Adulto Pagador):</label><input type="tel" id="externo-dni-pagador" placeholder="DNI (Quien paga)" pattern="[0-9]{8}" inputmode="numeric" maxlength="8" title="El DNI debe tener exactamente 8 dígitos numéricos.">
+                html += `<div id="datos-externo-container"><label for="externo-nombre-pagador" class="titulo-seccion-comprobante"><b>Nombre y Apellido (del Adulto Pagador):</b></label><input type="text" id="externo-nombre-pagador" placeholder="Nombre Apellido (Quien paga)"><label for="externo-dni-pagador">DNI (del Adulto Pagador):</label><input type="tel" id="externo-dni-pagador" placeholder="DNI (Quien paga)" pattern="[0-9]{8}" inputmode="numeric" maxlength="8" title="El DNI debe tener exactamente 8 dígitos numéricos.">
 
               <div id="sub-metodo-cuotas-comprobante-container" style="display: none; margin-top: 15px;">
-                <label for="subMetodoCuotasComprobante">Indique cómo pagó la cuota:</label>
-                <select id="subMetodoCuotasComprobante" name="subMetodoCuotasComprobante">
-                  <option value="">-- Elija una opción --</option>
-                  <option value="Efectivo">a) Pagué cuota efectivo en Adm. del Club.</option>
-                  <option value="Transferencia">b) Pagué con Transferencia(Bancaria, MP,etc.)</option>
-                </select>
+                <label class="titulo-seccion-comprobante"><b>Indique cómo pagó la cuota:</b></label>
+                <div class="checkbox-option">
+                  <input type="checkbox" id="subMetodoEfectivo" name="subMetodoCuotasComprobante" value="Efectivo">
+                  <label for="subMetodoEfectivo">a) Pagué cuota efectivo en Adm. del Club.</label>
+                </div>
+                <div class="checkbox-option">
+                  <input type="checkbox" id="subMetodoTransferencia" name="subMetodoCuotasComprobante" value="Transferencia">
+                  <label for="subMetodoTransferencia">b) Pagué con Transferencia(Bancaria, MP,etc.)</label>
+                </div>
               </div>
 
               <div id="pago-familiar-container" style="display: ${response.tieneHermanos ? 'flex' : 'none'};
@@ -334,7 +337,7 @@ else {
 
                 // (Botón de Subida)
 
-                html += `<div id="upload-file-container"><label for="comprobante-manual-upload" class="file-input-label" style="background-color: #7f8c8d;">Seleccionar Archivo para Subir</label><input type="file" id="comprobante-manual-upload" accept="image/jpeg, image/png, application/pdf"><div style="display: flex; align-items: center; margin-bottom: 15px;"><span id="comprobante-manual-name" class="file-name" style="margin-bottom: 0;">Ningún archivo seleccionado</span><button type="button" id="btn-clear-comprobante" class="btn-remover" style="display:none; margin-top: 0; margin-left: 10px;">X</button></div><button type="button" id="btn-submit-comprobante-manual">Subir Comprobante</button><div class="loader" id="loader-comprobante" style="display: none; margin-top: 15px;"><div class="spinner"></div><p>Subiendo comprobante...</p></div></div><hr style="margin-top:20px;"><button type="button" id="btn-finalizar-upload" class="btn-final-volver">Finalizar Carga (Volver)</button></div>`;
+                html += `<div id="upload-file-container"><label for="comprobante-manual-upload" class="file-input-label" style="background-color: #7f8c8d;">Seleccionar Archivo para Subir</label><input type="file" id="comprobante-manual-upload" accept="image/jpeg, image/png, application/pdf"><div style="display: flex; align-items: center; margin-bottom: 15px;"><span id="comprobante-manual-name" class="file-name" style="margin-bottom: 0;">Ningún archivo seleccionado</span><button type="button" id="btn-clear-comprobante" class="btn-remover" style="display:none; margin-top: 0; margin-left: 10px;">X</button></div><button type="button" id="btn-submit-comprobante-manual">Subir Comprobante</button><div id="progress-container-comprobante" style="display: none; margin-top: 15px;"><div id="progress-bar-comprobante">0%</div></div><div class="loader" id="loader-comprobante" style="display: none; margin-top: 15px;"><div class="spinner"></div><p>Subiendo comprobante...</p></div></div><hr style="margin-top:20px;"><button type="button" id="btn-finalizar-upload" class="btn-final-volver">Finalizar Carga (Volver)</button></div>`;
 
         
 
@@ -357,8 +360,10 @@ else {
             html += `<div id="editar-info-seccion" style="margin-top: 20px;">
               <button type="button" id="btn-mostrar-editar" class="btn-editar">Editar Datos de Contacto / Salud / Autorizados</button>
               <div id="editar-form-container" style="display: none;">
-                <h3>Editando Datos</h3>
-                <div id="edit-timer"></div>
+                <div class="edit-header">
+                  <h3>Editando Datos</h3>
+                  <div id="edit-timer"></div>
+                </div>
                 <p>Modifique solo los campos necesarios. Los campos de DNI e Email del inscripto no se pueden cambiar.</p>
                 
                 <div class="edit-grid">
@@ -901,13 +906,13 @@ else {
                     const datosExtras = { nombrePagador: nombrePagador, dniPagador: dniPagador };
 
                     if (tipoComprobante === 'mp_cuotas_group') {
-                      const subMetodo = document.getElementById('subMetodoCuotasComprobante').value;
-                      if (!subMetodo) {
+                      const subMetodos = Array.from(document.querySelectorAll('input[name="subMetodoCuotasComprobante"]:checked')).map(cb => cb.value);
+                      if (subMetodos.length === 0) {
                           loaderComprobante.innerHTML = `<div class="mensaje error" style="margin-bottom:0;">Por favor, indique cómo pagó la cuota.</div>`;
                           loaderComprobante.style.display = 'block';
                           return;
                       }
-                      datosExtras.subMetodo = subMetodo;
+                      datosExtras.subMetodo = subMetodos.join(', ');
                     }
 
 
@@ -928,12 +933,37 @@ else {
         
 
                     this.disabled = true;
-
                     fileInputComprobante.disabled = true;
-
                     if (document.getElementById('btn-finalizar-upload')) document.getElementById('btn-finalizar-upload').disabled = true;
+                    
+                    const progressContainer = document.getElementById('progress-container-comprobante');
+                    const progressBar = document.getElementById('progress-bar-comprobante');
+                    if (progressContainer && progressBar) {
+                        progressContainer.style.display = 'block';
+                        progressBar.style.width = '0%';
+                        progressBar.textContent = '0%';
+                        progressBar.style.backgroundColor = '#007bff'; // Initial color (blue)
 
-                    loaderComprobante.style.display = 'block';
+                        let progress = 0;
+                        const interval = setInterval(() => {
+                            progress += 10;
+                            if (progress <= 90) {
+                                progressBar.style.width = progress + '%';
+                                progressBar.textContent = progress + '%';
+                                // Calculate color: from blue (0%) to green (100%)
+                                const blueComponent = Math.floor(255 * (1 - progress / 100));
+                                const greenComponent = Math.floor(255 * (progress / 100));
+                                const color = `rgb(0, ${greenComponent}, ${blueComponent})`;
+                                progressBar.style.backgroundColor = color;
+                            } else {
+                                clearInterval(interval);
+                            }
+                        }, 200);
+                        
+                        this.dataset.progressInterval = interval;
+                    } else {
+                        loaderComprobante.style.display = 'block';
+                    }
 
         
 
@@ -1575,14 +1605,27 @@ else {
     });
   }
 
+  /**
+   * (MODIFICADO)
+   * - Asegura que la barra de progreso se oculte en caso de fallo.
+   */
   function handleComprobanteUploadFailure(error) {
-    document.getElementById('loader-comprobante').style.display = 'none';
     const statusDiv = document.getElementById('status-validacion');
-    statusDiv.insertAdjacentHTML('afterbegin', `<div class="mensaje error" style="margin-bottom:10px;">Error al subir: ${error.message}</div>`);
-
     const fileInputComprobante = document.getElementById('comprobante-manual-upload');
     const btnSubmitComprobante = document.getElementById('btn-submit-comprobante-manual');
     const btnFinalizar = document.getElementById('btn-finalizar-upload');
+    const loaderComprobante = document.getElementById('loader-comprobante');
+
+    // Clear progress interval and hide progress bar
+    const submitButton = document.getElementById('btn-submit-comprobante-manual');
+    if (submitButton && submitButton.dataset.progressInterval) {
+        clearInterval(parseInt(submitButton.dataset.progressInterval));
+        const progressContainer = document.getElementById('progress-container-comprobante');
+        if (progressContainer) progressContainer.style.display = 'none';
+    }
+    loaderComprobante.style.display = 'none'; // Ensure spinner is hidden
+
+    statusDiv.insertAdjacentHTML('afterbegin', `<div class="mensaje error" style="margin-bottom:10px;">Error al subir: ${error.message}</div>`);
 
     if (btnSubmitComprobante) btnSubmitComprobante.disabled = false;
     if (fileInputComprobante) fileInputComprobante.disabled = false;
@@ -1594,10 +1637,28 @@ else {
    * - Corrige el bug que borraba la sección de aptitud.
    * - Resetea los checkboxes de cuotas al subir exitosamente.
    * - (BUG 1 y 2) FUERZA UNA RE-VALIDACIÓN para ocultar el contenedor si el pago fue completado.
+   * (NUEVO)
+   * - Elimina la redirección automática.
+   * - Muestra mensaje de éxito y permite al usuario finalizar manualmente.
+   * - Oculta la barra de progreso.
    */
   function handleComprobanteUploadSuccess(response) {
-    // Limpiar mensajes de error/éxito anteriores de esta sección
     const statusDiv = document.getElementById('status-validacion');
+    const fileInputComprobante = document.getElementById('comprobante-manual-upload');
+    const btnSubmitComprobante = document.getElementById('btn-submit-comprobante-manual');
+    const btnFinalizar = document.getElementById('btn-finalizar-upload');
+    const loaderComprobante = document.getElementById('loader-comprobante');
+
+    // Clear progress interval and hide progress bar
+    const submitButton = document.getElementById('btn-submit-comprobante-manual');
+    if (submitButton && submitButton.dataset.progressInterval) {
+        clearInterval(parseInt(submitButton.dataset.progressInterval));
+        const progressContainer = document.getElementById('progress-container-comprobante');
+        if (progressContainer) progressContainer.style.display = 'none';
+    }
+    loaderComprobante.style.display = 'none'; // Ensure spinner is hidden
+
+    // Limpiar mensajes de error/éxito anteriores de esta sección
     statusDiv.querySelectorAll('.mensaje').forEach(el => {
       // No borrar el mensaje de 'adeuda aptitud'
       if (el.closest && !el.closest('#aptitud-manual-seccion')) {
@@ -1607,87 +1668,32 @@ else {
       }
     });
 
-    document.getElementById('loader-comprobante').style.display = 'none';
-
-    const fileInputComprobante = document.getElementById('comprobante-manual-upload');
-    const btnSubmitComprobante = document.getElementById('btn-submit-comprobante-manual');
-    const btnFinalizar = document.getElementById('btn-finalizar-upload');
-
     if (response.status === 'OK') {
-      let finalMessage = response.message;
-      // Determinar completitud priorizando flags devueltos por el servidor (más fiables que texto)
-      const comprobantesCompletosResp = !!response.comprobantesCompletos;
-      const cuotasPendientesResp = (typeof response.cuotasPendientes === 'number') ? response.cuotasPendientes : null;
-      let isPaymentComplete = comprobantesCompletosResp || (cuotasPendientesResp !== null && cuotasPendientesResp === 0) || (response.estadoPago && (response.estadoPago.includes('Pagado') || response.estadoPago.includes('Pago total') || response.estadoPago.includes('Pago Total')));
+      // --- INICIO DE LA MODIFICACIÓN ---
+      // Mostrar mensaje de éxito y forzar una re-validación completa para refrescar el estado.
+      statusDiv.insertAdjacentHTML('afterbegin', `<div class="mensaje exito" style="margin-bottom:10px;">${response.message}</div>`);
 
-      if (isPaymentComplete) {
-        finalMessage = response.message;
-
-        // Ocultar el formulario de subida (ocultación inmediata si el servidor confirmó comprobantes completos)
-        if (document.getElementById('comprobante-manual-seccion')) {
-          document.getElementById('comprobante-manual-seccion').style.display = 'none';
-        }
-
-        statusDiv.insertAdjacentHTML('afterbegin', `<div class="mensaje exito" style="margin-bottom:10px;">${finalMessage}</div>`);
-
-      } else {
-        // Si es un pago de cuota parcial
-        finalMessage += "<br>Puede subir otra cuota o finalizar.";
-        statusDiv.insertAdjacentHTML('afterbegin', `<div class="mensaje exito" style="margin-bottom:10px;">${finalMessage}</div>`);
-
-        // Limpiar todo para la próxima subida
-        const tipoComprobanteSelect = document.getElementById('tipo-comprobante-select');
-        const cuotaSelectorContainer = document.getElementById('cuota-selector-container');
-        const datosExternoContainer = document.getElementById('datos-externo-container');
-        const uploadFileContainer = document.getElementById('upload-file-container');
-        const btnClearComprobante = document.getElementById('btn-clear-comprobante');
-        const pagoFamiliarContainer = document.getElementById('pago-familiar-container');
-
-        if (fileInputComprobante) fileInputComprobante.value = '';
-        if (document.getElementById('comprobante-manual-name')) document.getElementById('comprobante-manual-name').textContent = 'Ningún archivo seleccionado';
-        if (tipoComprobanteSelect) tipoComprobanteSelect.value = '';
-        if (cuotaSelectorContainer) cuotaSelectorContainer.style.display = 'none';
-        if (datosExternoContainer) datosExternoContainer.style.display = 'none';
-        if (uploadFileContainer) uploadFileContainer.style.display = 'none';
-        if (pagoFamiliarContainer) pagoFamiliarContainer.style.display = 'none';
-        if (btnClearComprobante) btnClearComprobante.style.display = 'none';
-        if (document.getElementById('externo-nombre-pagador')) document.getElementById('externo-nombre-pagador').value = '';
-        if (document.getElementById('externo-dni-pagador')) document.getElementById('externo-dni-pagador').value = '';
-
-        // (NUEVO) Resetear checkboxes de cuotas
-        document.querySelectorAll('.cuota-checkbox-item input:checked').forEach(chk => chk.checked = false);
-      }
-
-      // Reactivar botones en cualquier caso de éxito
-      if (btnSubmitComprobante) btnSubmitComprobante.disabled = false;
-      if (fileInputComprobante) fileInputComprobante.disabled = false;
-      if (btnFinalizar) btnFinalizar.disabled = false;
-
-      // --- (INICIO CORRECCIÓN BUG 1 y 2) ---
-      // Forzar una re-validación silenciosa para actualizar el estado (ocultar el div de pago si se completó)
+      // Disparar la re-validación para actualizar toda la sección de estado de pago.
       const dni = document.getElementById('dni-input').value;
       const tipo = document.getElementById('tipoInscripto').value;
-      // Mostrar un loader temporal mientras se re-valida
-      document.getElementById('loader-validacion').style.display = 'block';
-      document.getElementById('loader-validacion').querySelector('p').textContent = 'Actualizando estado...';
+      const loaderValidacion = document.getElementById('loader-validacion');
+      
+      if (loaderValidacion) {
+        loaderValidacion.style.display = 'block';
+        loaderValidacion.querySelector('p').textContent = 'Actualizando estado de pagos...';
+      }
 
-      // Limpiar mensajes antiguos antes de re-validar
-      statusDiv.querySelectorAll('.mensaje').forEach(el => {
-        // No borrar el mensaje de 'adeuda aptitud'
-        if (el.closest && !el.closest('#aptitud-manual-seccion')) {
-          el.remove();
-        } else if (!el.closest) {
-          el.remove();
-        }
-      });
+      // Ocultar la sección de subida de comprobante mientras se actualiza
+      const comprobanteSection = document.getElementById('comprobante-manual-seccion');
+      if (comprobanteSection) {
+        comprobanteSection.style.display = 'none';
+      }
 
       google.script.run
-        .withSuccessHandler(handleValidationSuccess) // Llama al handler principal de nuevo
+        .withSuccessHandler(handleValidationSuccess) // El handler principal que redibuja todo
         .withFailureHandler(handleValidationFailure)
         .validarAcceso(dni, tipo);
-      // --- (FIN CORRECCIÓN BUG 1 y 2) ---
-
-      return;
+      // --- FIN DE LA MODIFICACIÓN ---
 
     } else { // Si response.status es 'ERROR'
       statusDiv.insertAdjacentHTML('afterbegin', `<div class="mensaje error" style="margin-bottom:10px;">${response.message}</div>`);

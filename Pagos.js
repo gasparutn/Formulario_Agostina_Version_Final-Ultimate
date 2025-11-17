@@ -35,7 +35,12 @@ function paso1_registrarRegistro(datos) {
     } else {
       datos.precio = infoPrecioPrincipal.precio;
     }
-    datos.montoAPagar = infoPrecioPrincipal.montoAPagar; // Col AK ('' si es cuotas, $Total si es único)
+    // (MODIFICADO) Para cuotas, AK empieza en 0 para acumular pagos. Para otros, es el total.
+    if (datos.metodoPago === 'Pago en Cuotas') {
+      datos.montoAPagar = 0;
+    } else {
+      datos.montoAPagar = infoPrecioPrincipal.montoAPagar;
+    }
     datos.cantidadCuotas = infoPrecioPrincipal.cantidadCuotas; // Col AI
     datos.valorCuota = infoPrecioPrincipal.valorCuota; // (NUEVO) Valor para AF, AG, AH
     // (datos.subMetodoCuotas ya viene en el objeto 'datos')
@@ -57,6 +62,9 @@ function paso1_registrarRegistro(datos) {
       return respuestaUpdate;
     } else {
       
+      // (INICIO CORRECCIÓN) Crear una copia profunda de los datos del principal ANTES de procesar hermanos.
+      const datosOriginalesPrincipal = JSON.parse(JSON.stringify(datos));
+
       const respuestaRegistro = registrarDatos(datos); 
       
       if (respuestaRegistro.status !== 'OK_REGISTRO') {
@@ -136,6 +144,10 @@ function paso1_registrarRegistro(datos) {
       
       respuestaRegistro.hermanosRegistrados = hermanosRegistrados;
       Logger.log("PASO 1 FINALIZADO. Respuesta: " + JSON.stringify(respuestaRegistro));
+
+      // (FIN CORRECCIÓN) Asegurarse de que los datos devueltos al frontend sean los del principal, no los del último hermano.
+      respuestaRegistro.datos = datosOriginalesPrincipal;
+
       return respuestaRegistro;
     }
 
@@ -189,16 +201,19 @@ function actualizarDatosHermano(datos) {
     const montoAPagar = infoPrecio.montoAPagar; // Col AK ('' si es cuotas, $Total si es único)
     const valorCuota = infoPrecio.valorCuota; // Valor para AF, AG, AH
     
+    // (MODIFICADO) Para cuotas, AK empieza en 0 para acumular pagos. Para otros, es el total.
+    let montoAPagarFinal;
+    if (datos.metodoPago === 'Pago en Cuotas') {
+      montoAPagarFinal = 0;
+    } else {
+      montoAPagarFinal = infoPrecio.montoAPagar;
+    }
+
     datos.cantidadCuotas = infoPrecio.cantidadCuotas;
     datos.valorCuota = valorCuota;
     
-    if (datos.metodoPago === 'Pago en Cuotas') {
-      datos.estadoPago = `Pendiente (${datos.cantidadCuotas} Cuotas)`;
-    } else if (datos.metodoPago === 'Pago Efectivo (Adm del Club)') {
-      datos.estadoPago = "Pendiente (Efectivo)";
-    } else if (datos.metodoPago === 'Transferencia') {
-      datos.estadoPago = "Pendiente (Transferencia)";
-    }
+    // El estado de pago ya se define correctamente en el frontend o en la lógica previa.
+    // Se mantiene el estado que llega en 'datos'.
     // =========================================================
 
 
@@ -255,7 +270,7 @@ function actualizarDatosHermano(datos) {
     hojaRegistro.getRange(fila, COL_PRECIO).setValue(precio); // AE (Precio Total)
     hojaRegistro.getRange(fila, COL_CANTIDAD_CUOTAS).setValue(parseInt(datos.cantidadCuotas) || 0); // AI
     hojaRegistro.getRange(fila, COL_ESTADO_PAGO).setValue(datos.estadoPago); // AJ
-    hojaRegistro.getRange(fila, COL_MONTO_A_PAGAR).setValue(montoAPagar); // AK (Vacío o Total)
+    hojaRegistro.getRange(fila, COL_MONTO_A_PAGAR).setValue(montoAPagarFinal); // AK (0 o Total)
     
     // Escribir el valor de cuota individual en AF, AG, AH
     if (datos.cantidadCuotas === 3 && valorCuota > 0) {

@@ -373,8 +373,8 @@ function registrarDatos(datos, testSheetName) {
     valoresFila[COL_MONTO_A_PAGAR - 1] = datos.montoAPagar; // AK (Vacío o Total)
 
     // Escribir el valor de cuota individual en AF, AG, AH
-    if (datos.cantidadCuotas === 3 && datos.valorCuota > 0) {
-      valoresFila[COL_CUOTA_1 - 1] = datos.valorCuota; // AF
+    if (datos.metodoPago === 'Pago en Cuotas') {
+      valoresFila[COL_CUOTA_1 - 1] = datos.valorCuota; // AF (Valor de la cuota)
       valoresFila[COL_CUOTA_2 - 1] = datos.valorCuota; // AG
       valoresFila[COL_CUOTA_3 - 1] = datos.valorCuota; // AH
     }

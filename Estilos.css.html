@@ -739,9 +739,29 @@
     margin-top: 15px;
   }
 
+  .edit-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--color-principal);
+    color: white;
+    padding: 10px 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+  }
+
+  .edit-header h3 {
+    background-color: transparent;
+    padding: 0;
+    margin: 0;
+    text-align: left;
+    font-size: 1.2em;
+    color: white;
+  }
+
   #edit-timer {
     /* (CORRECCIÓN) Estilos para hacer el temporizador prominente */
-    float: right; /* Usar float para posicionar a la derecha */
+    /* float: right;  <-- Eliminado para usar Flexbox */
     font-size: 1rem; /* Tamaño de fuente base */
     font-weight: bold;
     color: white;
@@ -924,5 +944,18 @@
   display: flex;
   gap: 10px;
   align-items: center;
+}
+.titulo-seccion-comprobante {
+  font-size: 1.1em;
+}
+
+.checkbox-option {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.checkbox-option input[type="checkbox"] {
+  margin-right: 10px;
 }
 </style>
